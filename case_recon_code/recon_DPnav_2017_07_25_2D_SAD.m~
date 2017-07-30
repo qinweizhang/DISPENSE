@@ -492,7 +492,7 @@ trj_fn = 'traj_Sc16_17_18.mat';
 load(trj_fn); load(data_fn);
 %scle trajectory to match kx_range, ky_range (-pi to pi)
 ignore_kz = 0;
-recon_dim  = [24 24 15];
+recon_dim  = [24 24 22];
 
 %calc sens_maps
 sense_map_recon = 1;
@@ -522,7 +522,7 @@ if(sense_map_recon)
         kspa_TSE_resize=bsxfun(@times,kspa_TSE_resize,che);
         sens=bart('ecalib -m1 -c0',kspa_TSE_resize);
         sens_map =  sens;
-        figure(701); montage(abs(sens_map(:,:,7,:)),'displayrange',[])
+        figure(701); montage(abs(sens_map(:,:,11,:)),'displayrange',[])
         
         save(data_fn, 'sens_map','-append');
     end

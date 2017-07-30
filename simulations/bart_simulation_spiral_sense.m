@@ -52,7 +52,7 @@ traj_matrix_3D_nufft_rs(2,:) = trj_meas_ky_scaled;
 traj_matrix_3D_nufft_rs(3,:) = trj_meas_kz_scaled;
 
 %% 2D simulation
-xy_res = 30 
+xy_res = 30
 K_space_ideal = bart('phantom -s8 -k -t', traj_matrix_2D_phantom_rs);
 
 bart_com_1 = sprintf('nufft -i -l0.01 -d%d:%d:1 ',xy_res,xy_res);
@@ -75,12 +75,12 @@ sens_maps_cartesian = bart('ecalib -m1', k_cartesian_rs);
 ima_trj_pics = squeeze(bart('pics -S -l2 -r0.001 -t', ...
     traj_matrix_2D_nufft_rs, K_space_ideal, sens_maps_cartesian)); %or sens_maps_cartesian
 
-figure(20021); 
+figure(20021);
 subplot(121);imshow(abs(squeeze(bart('rss 8',ima_nufft))),[]); title('reference')
 subplot(122);imshow(abs(ima_trj_pics),[]); title('pics+traj correction (spiral sense)')
 
 %% 2D NUFFT simulation
-%trajectory should scale to [-pi pi] = bart_nufft interval = 1; 
+%trajectory should scale to [-pi pi] = bart_nufft interval = 1;
 %scale to e.g. [-2pi 2pi] = bart_nufft interval = 2  >>> big FOV and image repetition
 
 
@@ -90,16 +90,16 @@ cart_traj_nufft = pi/10*traj_matrix_2D_nufft_rs';
 
 
 %correct direct recon
- A=nuFTOperator(cart_traj_nufft(:,1:2),[64, 64],ones(64, 64,8),6); 
- im_recon_nufft=regularizedReconstruction(A,col(K_space_ideal(1,:,:,:)),@L2Norm,0.5,'maxit',25);
-       
- figure; imshow(abs(im_recon_nufft),[])      
- 
- %correct sense recon
-  A=nuFTOperator(cart_traj_nufft(:,1:2),[30, 30],squeeze(sens_maps_cartesian),6); 
- im_recon_nufft=regularizedReconstruction(A,col(K_space_ideal(1,:,:,:)),@L2Norm,0.5,'maxit',25);
-       
- figure; imshow(abs(im_recon_nufft),[])    
+A=nuFTOperator(cart_traj_nufft(:,1:2),[64, 64],ones(64, 64,8),6);
+im_recon_nufft=regularizedReconstruction(A,col(K_space_ideal(1,:,:,:)),@L2Norm,0.5,'maxit',25);
+
+figure; imshow(abs(im_recon_nufft),[])
+
+%correct sense recon
+A=nuFTOperator(cart_traj_nufft(:,1:2),[30, 30],squeeze(sens_maps_cartesian),6);
+im_recon_nufft=regularizedReconstruction(A,col(K_space_ideal(1,:,:,:)),@L2Norm,0.5,'maxit',25);
+
+figure; imshow(abs(im_recon_nufft),[])
 
 %% 3D simulation
 
@@ -121,7 +121,7 @@ k_cartesian_3D_rs = bart(bart_com_4, k_cartesian_3D);
 
 sens_maps_3D_cartesian = bart('ecalib -c0 -m1', k_cartesian_3D_rs);
 
-figure(3002); 
+figure(3002);
 subplot(121)
 montage(permute(abs(sens_3D_ecalib1(:,:,7,:)),[1 2 3 4]),'displayrange',[]); colormap gray
 subplot(122);
