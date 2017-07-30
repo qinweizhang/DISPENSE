@@ -1,5 +1,5 @@
-# SoSADPRESS
-Stack of Spiral Aided Diffusion PREpared Stimulated-echo Sequence
+# SoSAD
+Stack of Spiral Aided Diffusion: a DPsti-TSE based method
 
 **This repo describes all the details for the Stack of Spiral AIded Diffusion PREpared Stimulated-echo Sequence (SoSAIDPRESS) implementation.**
 
