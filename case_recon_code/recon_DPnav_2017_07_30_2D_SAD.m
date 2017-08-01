@@ -1,6 +1,6 @@
 
 clear; vars_kerry; set(0,'DefaultAxesFontSize',22);
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_07_25_SoSAD_SENSE');
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_07_30_SoSAD_SENSE');
 
 %% Set file names
 clear; close all; clc
@@ -203,7 +203,7 @@ wrap_idx = [1 2 3 4 5 7 8 9 11 ];
 im_M1_ksp_phase_unwrap(:,wrap_idx,diffusion_nr) = im_M1_ksp_phase_unwrap(:,wrap_idx,diffusion_nr)-2* pi;
 wrap_idx_p = [2 3 4 5  7 8 9 10 11];
 im_P1_ksp_phase_unwrap(:,wrap_idx_p,diffusion_nr) = im_P1_ksp_phase_unwrap(:,wrap_idx_p,diffusion_nr) - 2* pi;
-wrap_idx_z = [4:7 13];
+wrap_idx_z = [1:5 7:11];
 im_S1_ksp_phase_unwrap(:,wrap_idx_z,diffusion_nr) = im_S1_ksp_phase_unwrap(:,wrap_idx_z,diffusion_nr) - 2* pi;
 
 
@@ -245,10 +245,10 @@ subplot(122); plot3(trj_meas_kx(plot_range,diffusion_nr), trj_meas_ky(plot_range
 weight = sqrt(diff(squeeze(trj_meas_kx(:,diffusion_nr))).^2 + diff(squeeze(trj_meas_ky(:,diffusion_nr))).^2 + diff(squeeze(trj_meas_kz(:,diffusion_nr))).^2);
 
 
-save traj_Sc16_17_18.mat trj_meas_kx trj_meas_ky trj_meas_kz
+save traj_Sc4_5_6.mat trj_meas_kx trj_meas_ky trj_meas_kz
 %% Recon with measured Trajecotry
 clear
-fn = 'dp_25072017_1903192_15_2_wipdpstisosadlinearV4.raw';
+fn = 'dp_30072017_1710446_2_2_wip_dpsti_sosad_linearV4.raw';
 MR_TSEDPnav_data = MRecon(fn);
 
 MR_TSEDPnav_data_recon1 = MR_TSEDPnav_data.Copy;
@@ -304,7 +304,7 @@ figure(43); imshow(abs(((im_data_cc(32:96,:,3)))),[])
 figure(44); imshow(angle(((im_data_cc(32:96,:,3)))),[-pi pi]); colormap jet; colorbar
 
 %% SAVE DATA
-save_fn = 'data_Sc15_3D.mat';
+save_fn = 'data_Sc02_3D.mat';
 if(exist(save_fn)>0)
     save(save_fn, 'nav_k_spa_data','-append');
 else
@@ -331,9 +331,9 @@ ignor_kz = 0;  % 1for yes. 0 for no
 diffusion_nr = 1;
 
 
-skip_point =0;
-end_point =  size(trj_meas_kx,1);
-selected_point = [skip_point+1:end_point];
+recon_par.skip_point =0;
+recon_par.end_point =  size(trj_meas_kx,1);
+selected_point = [recon_par.skip_point+1:recon_par.end_point];
 trj_meas_kx_t = trj_meas_kx(selected_point,diffusion_nr);
 trj_meas_ky_t = trj_meas_ky(selected_point,diffusion_nr);
 trj_meas_kz_t = trj_meas_kz(selected_point,diffusion_nr);
@@ -419,10 +419,10 @@ load('traj_Sc10_12_13.mat'); load(fn);
 shot_nr = 1;
 diffusion_nr = 1;
 nav_k_spa_data = squeeze(nav_k_spa_data);
-skip_point = 0;
-end_point = length(trj_meas_kx);
-end_point = 2000;
-selected_point = [skip_point+1:end_point];
+recon_par.skip_point = 0;
+recon_par.end_point = length(trj_meas_kx);
+recon_par.end_point = 2000;
+selected_point = [recon_par.skip_point+1:recon_par.end_point];
 
 trj_meas_kx_t = squeeze(trj_meas_kx(selected_point,1));
 trj_meas_ky_t = squeeze(trj_meas_ky(selected_point,1));
@@ -445,8 +445,8 @@ subplot(122); plot(trj_meas_kx_scaled, trj_meas_ky_scaled); xlabel('measured kx 
 
 trj_nufft = double(cat(2, trj_meas_kx_scaled, trj_meas_ky_scaled));
 
-x_recon_dim = 24;
-y_recon_dim = 24;
+x_recon_par.recon_dim = 24;
+y_recon_par.recon_dim = 24;
 clear im_recon_nufft
 diffusion_nr = 1; % recon this diffusion volumn
 for shot_nr = 1: size(nav_k_spa_data,3)
@@ -456,7 +456,7 @@ for shot_nr = 1: size(nav_k_spa_data,3)
     for ch =1:size(nav_k_spa_data,2)
         sig_nufft = double(sig_kspa(:, ch));
         sig_nufft = sig_nufft';
-        A=nuFTOperator(trj_nufft,[x_recon_dim, y_recon_dim],ones(x_recon_dim, y_recon_dim),6);
+        A=nuFTOperator(trj_nufft,[x_recon_par.recon_dim, y_recon_par.recon_dim],ones(x_recon_par.recon_dim, y_recon_par.recon_dim),6);
         
         % simple inverse
         %     im_recon_nufft(:,:,ch) = A'*sig_nufft';
@@ -487,54 +487,51 @@ save(fn,'nav_im_recon_nufft','nav_im_recon_nufft_rss','-append');
 %% NUFFT recon.  3D
 clear; close all; clc;
 
-data_fn = 'data_Sc15_3D.mat';
-trj_fn = 'traj_Sc16_17_18.mat';
+data_fn = 'data_Sc02_3D.mat';
+trj_fn = 'traj_Sc4_5_6.mat';
 load(trj_fn); load(data_fn);
-%scle trajectory to match kx_range, ky_range (-pi to pi)
-ignore_kz = 0;
-recon_dim  = [24 24 22];
+
+
+%=============== recon parameters =========================
+recon_par.ignore_kz = 0;
+recon_par.recon_dim  = [30 30 15];
+recon_par.dyn_nr = 1;
+recon_par.skip_point = 0;
+recon_par.end_point = length(trj_meas_kx);
+% recon_par.end_point = 2000;
+recon_par.sense_map_recon = 1;
+recon_par.update_SENSE_map = 0;
+recon_par.sense_calc_method = 'external'; %or 'external'
+recon_par.data_fn = 'dp_30072017_1715113_3_2_wip_dpsti_sosad_linearV4.raw';
+recon_par.sense_ref = 'dp_30072017_1710131_1000_7_wip_senserefscanV4.raw';
+recon_par.coil_survey = 'dp_30072017_1701057_1000_2_wip_coilsurveyscanV4.raw';
+%========================  END  =========================
+
+
+selected_point = recon_par.skip_point+1:recon_par.end_point;
 
 %calc sens_maps
-sense_map_recon = 1;
-if(sense_map_recon)
+if(recon_par.sense_map_recon)
     %get k space
-    if(exist('sens_map'))
+    if(exist('sens_map')&(~recon_par.update_SENSE_map))
     else
-        fn = 'dp_25072017_1903192_15_2_wipdpstisosadlinearV4.raw';
-        MR_TSEDPima_data = MRecon(fn);
-
-        MR_TSEDPima_data_recon1 = MR_TSEDPima_data.Copy;
-
-        MR_TSEDPima_data_recon1.Parameter.Parameter2Read.typ = 1;
-        MR_TSEDPima_data_recon1.Parameter.Parameter2Read.mix = 0;  %for DPnav Spirals
-        MR_TSEDPima_data_recon1.ReadData;
-        MR_TSEDPima_data_recon1.RandomPhaseCorrection;
-        MR_TSEDPima_data_recon1.RemoveOversampling;
-        MR_TSEDPima_data_recon1.PDACorrection;
-        MR_TSEDPima_data_recon1.DcOffsetCorrection;
-        MR_TSEDPima_data_recon1.MeasPhaseCorrection;
-        MR_TSEDPima_data_recon1.SortData;
-        kspa_sorted = double(squeeze(MR_TSEDPima_data_recon1.Data));
-
-        bart_command_1 = sprintf('resize -c 0 %d 1 %d 2 %d',recon_dim(1),recon_dim(2),recon_dim(3) )
-        kspa_TSE_resize = bart(bart_command_1, kspa_sorted);
-        che=create_checkerboard([1,size(kspa_TSE_resize,2),size(kspa_TSE_resize,3)]);
-        kspa_TSE_resize=bsxfun(@times,kspa_TSE_resize,che);
-        sens=bart('ecalib -m1 -c0',kspa_TSE_resize);
-        sens_map =  sens;
-        figure(701); montage(abs(sens_map(:,:,11,:)),'displayrange',[])
-        
+        if(strcmp(recon_par.sense_calc_method, 'ecalib'))
+            
+            sens_map = get_sense_map_ecalib(recon_par.data_fn,recon_par.recon_dim );
+            
+        elseif (strcmp(recon_par.sense_calc_method, 'external'))
+            
+            sens_map = get_sense_map_external(recon_par.sense_ref, recon_par.data_fn, recon_par.coil_survey, recon_par.recon_dim);
+     end
         save(data_fn, 'sens_map','-append');
     end
     
 else
-    sens_map = ones(recon_dim);
+    sens_map = ones(recon_par.recon_dim);
 end
 
 
-skip_point = 0;
-end_point = length(trj_meas_kx);
-selected_point = [skip_point+1:end_point];
+
 
 trj_meas_kx_t = squeeze(trj_meas_kx(selected_point,1));
 trj_meas_ky_t = squeeze(trj_meas_ky(selected_point,1));
@@ -547,13 +544,13 @@ trj_meas_kz = trj_meas_kz_t';
 
 clear trj_meas_kx_t trj_meas_ky_t trj_meas_kz_t sig_bart_t
 
-scale_foctor_xy = max(pi/max(abs(trj_meas_kx)),pi/max(abs(trj_meas_ky)));
+scale_foctor_xy = max(2*pi/(max(trj_meas_kx)-min(trj_meas_kx)),2*pi/(max(trj_meas_ky)-min(trj_meas_ky)));
 trj_meas_kx_scaled = trj_meas_kx * scale_foctor_xy;
 trj_meas_ky_scaled = trj_meas_ky * scale_foctor_xy;
 
-scale_foctor_z = pi/max(abs(trj_meas_kz));
+scale_foctor_z = 2*pi/(max(trj_meas_kz)-min(trj_meas_kz));
 
-if(ignore_kz == 1)
+if(recon_par.ignore_kz == 1)
     scale_foctor_z = 0;
 end
 trj_meas_kz_scaled = trj_meas_kz * scale_foctor_z;
@@ -570,18 +567,18 @@ trj_nufft = double(cat(1, trj_meas_kx_scaled, trj_meas_ky_scaled, trj_meas_kz_sc
 trj_nufft = trj_nufft';
 clear im_recon_nufft nav_im_recon_nufft
 
-diffusion_nr = 1;
+
 
 % for shot_nr = 1: size(nav_k_spa_data,3)
 for shot_nr = 1:1
     
     shot_nr
     
-    sig_kspa = nav_k_spa_data(selected_point,:,shot_nr,diffusion_nr);
+    sig_kspa = nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr);
     
-    if(sense_map_recon) %all in one recon
+    if(recon_par.sense_map_recon) %all in one recon
         sig_nufft = col(double(sig_kspa));
-        A=nuFTOperator(trj_nufft,recon_dim,sens_map,6);
+        A=nuFTOperator(trj_nufft,recon_par.recon_dim,sens_map,6);
         
         % simple inverse
         nav_im_recon_nufft = A'*sig_nufft;
@@ -598,7 +595,7 @@ for shot_nr = 1:1
         for ch =1:size(nav_k_spa_data,2)
             sig_nufft = double(sig_kspa(:, ch));
             sig_nufft = sig_nufft';
-            A=nuFTOperator(trj_nufft,recon_dim,sens_map,6);
+            A=nuFTOperator(trj_nufft,recon_par.recon_dim,sens_map,6);
             
             % simple inverse
 %                 nav_im_recon_nufft(:,:,:,ch) = A'*sig_nufft';
@@ -616,7 +613,7 @@ end
 
 display_shot_nr = 1;
 
-if(sense_map_recon) %all in one recon
+if(recon_par.sense_map_recon) %all in one recon
     figure(37); montage(permute(abs(nav_im_recon_nufft), [1 2 4 3]),'displayrange',[]); title('all slices rss'); xlabel('P'); ylabel('M')
     figure(38); montage(permute(abs(nav_im_recon_nufft), [2 3 4 1]),'displayrange',[]); title('all slices rss'); xlabel('S'); ylabel('P')
 else
