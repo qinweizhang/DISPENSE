@@ -192,7 +192,7 @@ diffusion_nr = input(['diffusion setting nr (1-',num2str(diffusion_setting),'): 
 b0_diffusion_idx = 1;
 
 all_wrapped = false;
-while(all_wrapped)
+while(~all_wrapped)
     
     mm = im_M1_ksp_phase_unwrap(:,:,diffusion_nr)-im_M2_ksp_phase_unwrap(:,:,b0_diffusion_idx);
     figure(1001); plot(mm(1,:))
