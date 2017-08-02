@@ -20,7 +20,7 @@
     kspa_TSE_resize = bart(bart_command_1, kspa_sorted);
     che=create_checkerboard([1,size(kspa_TSE_resize,2),size(kspa_TSE_resize,3)]);
     kspa_TSE_resize=bsxfun(@times,kspa_TSE_resize,che);
-    sens=bart('ecalib -m1 -r 20 -c0.1',kspa_TSE_resize);
+    sens=bart('ecalib -m1 -r 20 -c0.001',kspa_TSE_resize);
     sens_map =  sens;
     figure(701); montage(abs(sens_map(:,:,11,:)),'displayrange',[])
         

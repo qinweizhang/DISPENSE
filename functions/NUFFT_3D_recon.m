@@ -81,7 +81,7 @@ for shot_nr = 1:1
         
         % simple inverse
         nav_im_recon_nufft = A'*sig_nufft;
-        figure(702); montage(permute(abs(nav_im_recon_nufft), [1 2 4 3]),'displayrange',[]);
+        figure(702); montage(permute(abs(nav_im_recon_nufft), [1 2 4 3]),'displayrange',[]); title('direct inverse');
         
         
         
