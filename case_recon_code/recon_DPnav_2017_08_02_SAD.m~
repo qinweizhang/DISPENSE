@@ -10,8 +10,8 @@ spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 
 %% TSE image and spiral Nav. data loading
 clear
-fn = 'dp_02082017_1559067_13_2_wip_sc13_dpsti_sosad_linear_senseV4.raw';
-save_fn = 'data_Sc13_3D.mat';
+fn = 'dp_02082017_1527199_4_2_wip_sc9_dpsti_sosad_linear_sense_kxyV4.raw';
+save_fn = 'data_Sc04_3D.mat';
 
 nav_kspa_data_read(fn, save_fn);
 % ima_kspa_data(fn, save_fn);
@@ -20,19 +20,19 @@ nav_kspa_data_read(fn, save_fn);
 %% NUFFT recon. 
 clear; close all; clc;
 
-data_fn = 'data_Sc13_3D.mat';
-trj_fn = 'traj_Sc14_15_16.mat'; 
+data_fn = 'data_Sc02_3D.mat';
+trj_fn = 'traj_Sc5_6_7_2017_07_31.mat'; 
 
 %=============== recon parameters =========================
 recon_par.ignore_kz = 0;
-recon_par.recon_dim  = [50 50 33];
+recon_par.recon_dim  = [30 30 15];
 recon_par.dyn_nr = 1;
 recon_par.skip_point = 0;
 recon_par.end_point = []; %or []: till the end; 
 recon_par.sense_map_recon = 1;
-recon_par.update_SENSE_map = 0;
+recon_par.update_SENSE_map = 1;
 recon_par.sense_calc_method = 'ecalib'; %'ecalib' or 'external'
-recon_par.data_fn = 'dp_02082017_1559067_13_2_wip_sc13_dpsti_sosad_linear_senseV4.raw';
+recon_par.data_fn = 'dp_02082017_1527199_4_2_wip_sc9_dpsti_sosad_linear_sense_kxyV4.raw';
 recon_par.sense_ref = 'dp_02082017_1516422_1000_7_wip_senserefscanV4.raw';
 recon_par.coil_survey = 'dp_02082017_1513421_1000_2_wip_coilsurveyscanV4.raw';
 %========================  END  =========================

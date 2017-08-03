@@ -42,8 +42,8 @@ save(data_fn, 'nav_im_recon_nufft','-append');
 
 %% -----BART recon -------%
 clear; close all; 
-data_fn = 'data_Sc13_3D.mat';
-trj_fn = 'traj_Sc14_15_16.mat';
+data_fn = 'data_Sc05_3D.mat';
+trj_fn = 'traj_Sc7_8_9.mat';
 
 %======recon parameters ======%
 bart_recon.ignor_kz = 0;  % 1for yes. 0 for no
