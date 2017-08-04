@@ -86,8 +86,8 @@ for shot_nr = 1:1
         
         
         %call CG-SENSE with L2-norm regularization
-        %      nav_im_recon_nufft(:,:,:,ch)=regularizedReconstruction(A,sig_nufft',@L2Norm,0.5,'maxit',10);
-        nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',20);
+        %      nav_im_recon_nufft(:,:,:,ch)=regularizedReconstruction(A,sig_nufft',@L2Norm,0.5,'maxit',recon_par.interations);
+        nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
         
     else %ch by ch recon
         
