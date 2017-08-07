@@ -1,9 +1,9 @@
 
 clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_04_SoSAD_phantom');
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_06_SoSAD_phantom');
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_Sc16_17_18.mat';
+trj_save_fn = 'traj_Sc24_25_26_for_Sc9.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 

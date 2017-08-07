@@ -1,17 +1,17 @@
 
 clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_04_SoSAD_phantom');
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_06_SoSAD_phantom');
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_Sc18_19_20_for_Sc7.mat';
+trj_save_fn = 'traj2_Sc30_31_32_for_Sc6.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 
 
 %% TSE image and spiral Nav. data loading
 clear
-fn = 'dp_03082017_1849161_15_2_wipsc2dpstisosadlinearV4.raw';
-save_fn = 'data_Sc15_3D.mat';
+fn = 'dp_06082017_1317365_5_2_wip_sc6_dpsti_sosad_linear-ppuV4.raw';
+save_fn = 'data_Sc05_3D.mat';
 
 nav_kspa_data_read(fn, save_fn);
 % ima_kspa_data(fn, save_fn);
@@ -20,22 +20,22 @@ nav_kspa_data_read(fn, save_fn);
 %% NUFFT recon. 
 clear; close all; clc;
 
-data_fn = 'data_Sc15_3D.mat';
-trj_fn = 'traj_Sc16_17_18.mat'; 
+data_fn = 'data_Sc05_3D.mat';
+trj_fn = 'traj2_Sc29_27_28_for_Sc4.mat'; 
 
 %=============== recon parameters =========================
 recon_par.ignore_kz = 0;
-recon_par.recon_dim  = [50 50 16];
+recon_par.recon_dim  = [36 36 13];
 recon_par.dyn_nr = 1;
 recon_par.skip_point = 0;
 recon_par.end_point = []; %or []: till the end; 
-recon_par.interations = 10;
+recon_par.interations = 20;
 recon_par.sense_map_recon = 1;
 recon_par.update_SENSE_map = 1;
 recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
-recon_par.data_fn = 'dp_03082017_1849161_15_2_wipsc2dpstisosadlinearV4.raw';
-recon_par.sense_ref = 'dp_03082017_1810092_1000_7_wipsenserefscanV4.raw';
-recon_par.coil_survey = 'dp_03082017_1806457_1000_2_wipcoilsurveyscanV4.raw';
+recon_par.data_fn = 'dp_06082017_1312115_4_2_wip_sc6_dpsti_sosad_linear-ppuV4.raw';
+recon_par.sense_ref = 'dp_06082017_1311336_1000_10_wip_senserefscanV4.raw';
+recon_par.coil_survey = 'dp_06082017_1308028_1000_5_wip_coilsurveyscanV4.raw';
 %========================  END  =========================
 
 nav_im_recon_nufft = NUFFT_3D_recon(data_fn,trj_fn,recon_par);
