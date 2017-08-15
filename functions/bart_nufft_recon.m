@@ -56,7 +56,7 @@ figure(23); montage(abs(permute(igrid_rss,[1 2 4 3])),'Displayrange',[]); title(
 if(bart_recon.PICS)
     
     % get sens maps
-    if(exist('bart_sens_map')&(~bart_recon.update_SENSE_map))
+    if(exist('nav_bart_sens_map')&(~bart_recon.update_SENSE_map))
     else
         if(strcmp(bart_recon.sense_calc_method, 'ecalib'))
             
@@ -74,22 +74,22 @@ if(bart_recon.PICS)
             fullres_ksp(:,:,:,:) = bart('fft -u 7', igrid);
             
             % ESPIRiT calibration
-            clear bart_sens_map
+            clear nav_bart_sens_map
             % sens = bart('ecalib -m1', ksp_zerop); %low res sense
-            bart_sens_map = bart('ecalib -m1', fullres_ksp); %high res sense
+            nav_bart_sens_map = bart('ecalib -m1', fullres_ksp); %high res sense
             
         elseif (strcmp(bart_recon.sense_calc_method, 'external'))
             
-            bart_sens_map = get_sense_map_external(bart_recon.sense_ref, bart_recon.data_fn, bart_recon.coil_survey, bart_recon.recon_dim);
+            nav_bart_sens_map = get_sense_map_external(bart_recon.sense_ref, bart_recon.data_fn, bart_recon.coil_survey, bart_recon.recon_dim);
         end
         
         
-        save(data_fn, 'bart_sens_map','-append');
+        save(data_fn, 'nav_bart_sens_map','-append');
     end
     
     %PICS
     bart_command_3 = sprintf('pics -S -r0.001 -t')
-    reco2 = bart(bart_command_3, trj_bart', sig_bart, bart_sens_map);
+    reco2 = bart(bart_command_3, trj_bart', sig_bart, nav_bart_sens_map);
     
     
 end
