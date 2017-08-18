@@ -1,4 +1,4 @@
-function im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation, varargin)
+function im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation,  varargin)
 %
 %INPUT
 %
@@ -6,18 +6,18 @@ function im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_
 %TSE:                   TSE structure contains profile labels for ima_k_spa_data
 %PE_estimation:         Phase error structure contains estimated phase error
 %(linear and global);
-%correction_shot_range: (optional) user defined correction shots range. All shots by default
-%sense_map:             (optional) sense maps for reconstruction
+%correction_shot_range:     (optional) user defined correction shots range. All shots by default
+%filenames for sense mpas:  (optional) sense maps for reconstruction
 %
 %OUTPUT
 %
 %im_recon_nufft_cor:    corrected TSE image reconstruction in size of [x, y, z].  cpx data
-
+gen_sense_map = 0; %defualt don't use sense maps
 if nargin == 4
     correction_shot_range=varargin{1};
 elseif nargin == 5
     correction_shot_range=varargin{1};
-    sense_map = varargin{2}
+    gen_sense_map = varargin{2};
 end
 
 %% ------Data Correction Initialization-----------------------------------
@@ -170,9 +170,12 @@ clear im_recon_nufft_uncor im_recon_nufft_uncor_fftshifted
 x_dim = nufft_dim(1); y_dim = nufft_dim(2); z_dim = nufft_dim(3);
 
 oversample_factor = 3;
-sense_map = 0; %1 available 0: not available
-if( exist('sens_map'))  %use sense imformation
+if( gen_sense_map )  %use sense imformation
     sens_nuff_uncor = gen_sense_map( raw_data_fn, [x_dim, y_dim, z_dim]);
+    TSE_sense_map = get_sense_map_external(sense_ref_fn, data_fn, coil_survey_fn);
+    %normalize sense maps
+    TSE_sense_map = normalize_sense_map(TSE_sense_map);
+    
     sens_nuff_uncor_shifted = fftshift(fftshift(sens_nuff_uncor,2),3);
     A=nuFTOperator(traj_nufft_ideal_scaled(recon_range,:),[x_dim, y_dim, z_dim],sens_nuff_uncor_shifted,oversample_factor);
 else

@@ -11,12 +11,12 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sa_13082017_1958269_15_2_wip_sc18_dpsti_sosad_linearV4.raw';
+data_fn = 'sa_13082017_2011072_17_2_wip_sc17_dpsti_sosad_linearV4.raw';
 sense_ref_fn = 'sa_13082017_1957331_1000_34_wip_senserefscanV4.raw';
 coil_survey_fn  = 'sa_13082017_1956371_1000_29_wip_coilsurveyscanV4.raw';
 
-data_mat_fn = 'data_Sc15_3D.mat';
-trj_mat_fn = 'traj2_Sc29_27_28_for_Sc4.mat';
+data_mat_fn = 'data_Sc17_3D.mat';
+trj_mat_fn = 'traj_Sc25_26_27_for_Sc17.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -30,11 +30,11 @@ close all;
 nav_im_recon_nufft = [];
 for dyn = 1:4
     %=============== recon parameters =========================
-    recon_par.ignore_kz = 1;
-    recon_par.recon_dim  = [36 36 1];
+    recon_par.ignore_kz = 0;
+    recon_par.recon_dim  = [26 26 10];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
-    recon_par.end_point = 2000; %[]; %or []: till the end;
+    recon_par.end_point = []; %or []: till the end;
     recon_par.interations = 10;
     recon_par.lamda = 0.1;
     recon_par.recon_all_shot = 1;
@@ -119,4 +119,9 @@ disp('-finished- ');
 %% TSE data correction
 % load(data_mat_fn);
 correction_shot_range = 15:28;
-im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation, correction_shot_range, TSE_sense_map);
+
+
+raw_fn.sense_ref_fn = sense_ref_fn;
+raw_fn.data_fn = data_fn;
+raw_fn.coil_survey_fn = coil_survey_fn;
+im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation,  correction_shot_range, raw_fn);

@@ -36,8 +36,14 @@ if(recon_par.sense_map_recon)
         end
         
         %normalize sense maps
-        nav_sens_map = normalize_sense_map(nav_sens_map);
+        sensvec=reshape(nav_sens_map,[size(nav_sens_map,1)*size(nav_sens_map,2)*size(nav_sens_map,3), size(nav_sens_map, 4)]);
+        sens1_mag = reshape(colnorm2(sensvec.'), [size(nav_sens_map,1),size(nav_sens_map,2), size(nav_sens_map,3)]);
+        nav_sens_map = bsxfun(@rdivide, nav_sens_map, sens1_mag);
         
+        nav_sens_map(find(isnan(nav_sens_map))) = 0;
+        nav_sens_map(find(isinf(nav_sens_map))) = 0;
+        
+        nav_sens_map = normalize_sense_map(nav_sens_map)
         save(data_fn, 'nav_sens_map','-append');
     end
     
