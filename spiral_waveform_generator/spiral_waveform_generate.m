@@ -11,12 +11,12 @@ sr_max      = 10000;    %in G/cm/s (100 mT/m/ms)
 %=========Scan Parameters============
 Par.FOV_xy      = 21; %FOV in M/P in cm
 Par.FOV_z       = 12;  %FOV in S in cm
-Par.VOX_xy      = 1;  %Voxel size in M/P in cm
+Par.VOX_xy      = 0.8;  %Voxel size in M/P in cm
 Par.VOX_z       = 1;  %Voxel size in S in cm
 Par.N           = 1;  %Interleaves
 %FOV(r) = Sum ( Fcoeff(k)*(r/rmax)^(k-1))
-Par.Fxy_coeff   = [1 -0.5] 	% FOVxy decreases linearly from 1 FOV to 0.5FOV. (R: 1 -> 2)
-Par.Fz_coeff    = [1 -0.5] % FOVxy decreases linearly from 1 FOV to 0.4FOV. (R: 1 -> 2.5)
+Par.Fxy_coeff   = [0.8 -0.6] 	% FOVxy decreases linearly from 1 FOV to 0.5FOV. (R: 1 -> 2)
+Par.Fz_coeff    = [1 -0.6] % FOVxy decreases linearly from 1 FOV to 0.4FOV. (R: 1 -> 2.5)
 %============END=====================
 
 kz_max  = 1 / Par.VOX_z / 2;
@@ -28,7 +28,6 @@ kz_all = calc_kz(kz_max, Par.FOV_z, Par.Fz_coeff);
 %% Calulate Kxy, Gxy and SRxy
 k_all = [];
 for kz_idx = 1:length(kz_all)
-    
     %calc spiral shape
     if(mod(kz_idx, 2) ==1 ) %update kxy_max only for spiral-out (odd)trjectories.
         Fz_coeff_now = 0;
@@ -39,37 +38,61 @@ for kz_idx = 1:length(kz_all)
         kxy_max_now = sqrt(kxy_max.^2 - kz_all(kz_idx).^2);
     end
     [k,g,s,time] = vds(sr_max,gr_max,gr_dwell,Par.N,Fcoeff,kxy_max_now);
-    
+    phi_end = angle(k(end));
+    k =  k .* exp(-i.*phi_end); %always ends at 0 degree
+    k = smooth_traj_end(k);
     %connect with previous spirals
-    if(mod(kz_idx, 2) == 0) %even spirals; spiral in        
+    if(mod(kz_idx, 2) == 0) %even spirals; spiral in
         %reverse order and flip in y axis(imaginary)
         k = fliplr(conj(k));
         %match the ends
         end_theta = angle(k_all(1,end) + i*k_all(2,end));
-        phi = end_theta - angle(k(1)); 
-        k = k .* exp(i.*phi);    
+        phi = end_theta - angle(k(1));
+        k = k .* exp(i.*phi);
         %connect the ends
-        d_kz = kz_all(kz_idx) - kz_all(kz_idx - 1);
-        blip_sr = 2000; %G/cm/s  20 mT/m/ms
-        slop = sqrt(d_kz / gamma /blip_sr); %seconds
-        gz = [0:gr_dwell:slop].*blip_sr;
-        gz = [gz fliplr(gz(1:end-1))];
-        kz_connect = k_all(3,end);
-        for idx = 1:length(gz)
-            kz_connect = [kz_connect kz_connect + gamma*gr_dwell*gz(idx)];
+        kz_connect = connect_kz(kz_all(kz_idx), kz_all(kz_idx - 1));       
+        k_3D = cat(1, real(k), imag(k), [kz_connect ones(1, length(k)-length(kz_connect)).*kz_all(kz_idx)] );
+    else
+        %connect the ends
+        k_3D_connect = [];
+        if(kz_idx > 1)
+            kz_connect = connect_kz(kz_all(kz_idx), kz_all(kz_idx - 1));
+            k_3D_connect = cat(1, zeros(2, length(kz_connect)), kz_connect);
         end
-        
-        
+        k_3D = cat(1, real(k), imag(k), ones(1, length(k)).*kz_all(kz_idx) );
+        k_3D = [k_3D_connect k_3D];
     end
-    k_3D = cat(1, real(k), imag(k), ones(1, length(k)).*kz_all(kz_idx) );
-    k_all = [k_all k_3D];
     
+    k_all = [k_all k_3D(:,2:end)];
     
 end
+
+%initial ramp down
+kz_rampdown = connect_kz(kz_all(1), 0);
+k_3D_rampdown = cat(1, zeros(2, length(kz_rampdown)), kz_rampdown);
+k_all = [k_3D_rampdown k_all];
+
 figure(2); plot3(k_all(1,:),k_all(2,:),k_all(3,:));
+for dir = 1:3
+    g_all(:,dir) = 1/gamma * cat(2, 0, diff(k_all(dir,:))./gr_dwell);
+end
+for dir = 1:3
+    sr_all(:,dir) = cat(2, 0, diff(g_all(:,dir))'./gr_dwell);
+end
 
-% disp('Plotting Gradient');
-% g_all = [real(g_all(:)) imag(g_all(:))];
-% plotgradinfo(g_all,gr_dwell);
+disp('Plotting Gradient');
+figure(10);
+plotgradinfo(g_all(:,[1 2]),gr_dwell);
 
+clc
+disp(['samples: ' num2str(length(g_all))]);
+disp(['total dur: ' num2str((length(g_all)-1)*gr_dwell*1000), ' ms']);
+%% export
+
+
+G_cm2mT_m = 10; %unit convert from G/cm to mT/m
+G_cm_s2mT_m_ms = 1/100;%unit convert from G/cm/s to mT/m/ms
+
+g_all_export = g_all * G_cm2mT_m;
+dlmwrite('L:\basic\divi\Ima\parrec\Kerry\External_spiral_waveform\external_spiral_GRwaveforms.dat',g_all_export,'delimiter','\t');
 

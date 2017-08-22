@@ -1,9 +1,9 @@
 
 clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_15_SND_signal_evaluation');
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_20_SND_external_waveform');
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_Sc25_26_27_for_Sc14.mat';
+trj_save_fn = 'traj_for_Sc20.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,12 +11,12 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_15082017_1958263_27_2_wip_sc18_dpsti_sosad_linearV4.raw';
-sense_ref_fn = 'sn_15082017_2006058_1000_47_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sn_15082017_2004480_1000_40_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_20082017_1601544_20_2_wip_sc17_dpsti_sosad_linearV4.raw';
+sense_ref_fn = 'sn_20082017_1601251_1000_46_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_20082017_1600298_1000_39_wip_coilsurveyscanV4.raw';
 
-data_mat_fn = 'data_Sc27_3D.mat';
-trj_mat_fn = 'traj_for_Sc27.mat';
+data_mat_fn = 'data_Sc20_3D.mat';
+trj_mat_fn = 'traj_for_Sc20.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -28,18 +28,18 @@ disp(' Spiral NUFFT recon...');
 close all;
 
 nav_im_recon_nufft = [];
-for dyn = 3:3
+for dyn = 1:1
     %=============== recon parameters =========================
-    recon_par.ignore_kz = 1;
-    recon_par.recon_dim  = [36 36 1];
+    recon_par.ignore_kz = 0;
+    recon_par.recon_dim  = [26 26 10];
     recon_par.dyn_nr = dyn;
-    recon_par.skip_point = 0 ;
-    recon_par.end_point = 2000; %[]; %or []: till the end;
+    recon_par.skip_point = 0;
+    recon_par.end_point = []; %or []: till the end;
     recon_par.interations = 20;
     recon_par.lamda = 0.1;
-    recon_par.recon_all_shot = 1;
+    recon_par.recon_all_shot = 0;
     recon_par.sense_map_recon = 1;
-    recon_par.update_SENSE_map = 0;
+    recon_par.update_SENSE_map = 1;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
     recon_par.data_fn = data_fn;
     recon_par.sense_ref = sense_ref_fn;

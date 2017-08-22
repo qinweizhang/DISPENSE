@@ -135,7 +135,7 @@ function [k,g,s,time,r,theta] = vds(smax,gmax,T,N,Fcoeff,rmax)
 disp('vds.m');
 gamma = 4257.6;
 
-oversamp = 2;		% Keep this even.
+oversamp = 8;		% Keep this even.
 To = T/oversamp;	% To is the period with oversampling.
 
 disp(['Oversampling AQ dwell time is: ', num2str(To)]);
