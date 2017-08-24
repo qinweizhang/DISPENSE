@@ -2,22 +2,22 @@ function res = mtimes(a,b)
 % res = mtimes(FPS, x)
 
 
-F_for = @(x) fft3d(x);      %3D forward FFT
-F_adj = @(x) ifft3d(x);     %3D backward FFT
+F_for = @(x) fft2d(x);      %2D forward FFT
+F_adj = @(x) ifft2d(x);     %2D backward FFT
 
-S_adj = @(x) (sum(bsxfun(@times, conj(a.sens), x), 4));     %a.sens: in [nx, ny, nz, nc]; x in [nx, ny, nz, nc]; output: [nx ny nz]
-S_for = @(x) bsxfun(@times, a.sens, x);                     %a.sens: in [nx, ny, nz, nc]; x in [nx, ny, nz]; output: [nx ny nz, nc]
+S_adj = @(x) (sum(bsxfun(@times, conj(a.sens), x), 3));     %a.sens: in [ny, nz, nc]; x in [ny, nz, nc]; output: [ny nz]
+S_for = @(x) bsxfun(@times, a.sens, x);                     %a.sens: in [ny, nz, nc]; x in [ny, nz]; output: [ny nz, nc]
 
-P_adj = @(x) (sum(bsxfun(@times, conj(a.pe), x), 5));       %a.pe in [nx, ny, nz, 1, nshot]; x in [nx, ny, nz, nc, nshot]; output: [nx, ny, nz, nc]
-P_for = @(x) bsxfun(@times, a.pe, x);                       %a.pe in [nx, ny, nz, 1, nshot]; x in [nx, ny, nz, nc]; output: [nx, ny, nz, nc, nshot]
+P_adj = @(x) (sum(bsxfun(@times, conj(a.pe), x), 4));       %a.pe in [ny, nz, 1, nshot]; x in [ny, nz, nc, nshot]; output: [ny, nz, nc]
+P_for = @(x) bsxfun(@times, a.pe, x);                       %a.pe in [ny, nz, 1, nshot]; x in [ny, nz, nc]; output: [ny, nz, nc, nshot]
 
 
 
-if size(b,1)==prod(a.image_dim)*a.numCoils*a.numShots || size(b,1)==prod(a.image_dim)
+if size(b,1)==prod(a.image_dim)*a.numCoils*a.numShots || numel(b)==prod(a.image_dim)
     if a.adjoint
-        res=reshape(b,[a.image_dim(1),a.image_dim(2),a.image_dim(3), a.numCoils,a.numShots]);
+        res=reshape(b,[a.image_dim(1),a.image_dim(2), a.numCoils,a.numShots]);
     else
-        res=reshape(b,[a.image_dim(1),a.image_dim(2),a.image_dim(3)]);
+        res=reshape(b,[a.image_dim(1),a.image_dim(2)]);
     end
     
 else
@@ -31,9 +31,9 @@ if a.adjoint
 else
     res=F_for(P_for(S_for(res)));
     res=res.*a.mask;
+    res = col(res);
 end
 
 
-res = col(res);
 
 

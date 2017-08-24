@@ -16,24 +16,24 @@
 
 function image_corrected = msDWIrecon(kspa, sense_map, phase_error, pars)
 
-[kx_dim, ky_dim, kz_dim, nc, ns] = size(kspa);
+[ky_dim, kz_dim, nc, ns] = size(kspa);
 
-assert(length(size(sense_map)) == 4 && sum([kx_dim ky_dim kz_dim nc]==size(sense_map)) ==  4); %sense_map size check
+assert(length(size(sense_map)) == 3 && sum([ky_dim kz_dim nc]==size(sense_map)) ==  3); %sense_map size check
 
 if(ns > 1)
-    assert(length(size(phase_error)) == 5 && sum([kx_dim ky_dim kz_dim 1 ns]==size(phase_error)) ==  5); %phase_error size check
+    assert(length(size(phase_error)) == 4 && sum([ky_dim kz_dim 1 ns]==size(phase_error)) ==  4); %phase_error size check
 else
     warning('This is a single-shot dataset!')
 end
 
 %normalized maps
-sense_map = normalize_sense_map(sense_map);
-phase_error = permute(normalize_sense_map(squeeze(phase_error)), [1 2 3 5 4]); %miss use normalized_sense_map function to normalized phase_error map
+sense_map = squeeze(normalize_sense_map(permute(sense_map,[4 1 2 3]))); %normalized in 4th dimension
+phase_error = normalize_sense_map(phase_error); %miss use normalized_sense_map function to normalized phase_error map
 
 %% recon
 if strcmp(pars.method, 'CG_CENSE')
     mask = abs(kspa) > 0;
-    A=FPSoperator(sense_map, phase_error, [kx_dim ky_dim kz_dim], nc, ns, mask);
+    A=FPSoperator(sense_map, phase_error, [ky_dim kz_dim], nc, ns, mask);
     
     b = col(kspa);
     lamda =  pars.lamda;
