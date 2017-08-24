@@ -28,7 +28,7 @@ disp(' Spiral NUFFT recon...');
 close all;
 
 nav_im_recon_nufft = [];
-for dyn = 2:2
+for dyn = 3:3
     %=============== recon parameters =========================
     recon_par.ignore_kz = 1;
     recon_par.recon_dim  = [36 36 1];

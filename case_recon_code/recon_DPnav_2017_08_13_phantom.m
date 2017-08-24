@@ -11,30 +11,30 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sa_13082017_2011072_17_2_wip_sc17_dpsti_sosad_linearV4.raw';
-sense_ref_fn = 'sa_13082017_1957331_1000_34_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sa_13082017_1956371_1000_29_wip_coilsurveyscanV4.raw';
+data_fn = 'sa_13082017_1943583_12_2_wip_sc18_dpsti_sosad_linearV4.raw';
+sense_ref_fn = 'sa_13082017_1943050_1000_26_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sa_13082017_1940474_1000_21_wip_coilsurveyscanV4.raw';
 
-data_mat_fn = 'data_Sc17_3D.mat';
-trj_mat_fn = 'traj_Sc25_26_27_for_Sc17.mat';
+trj_mat_fn = 'traj2_Sc29_27_28_for_Sc4.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
-nav_kspa_data_read(data_fn, data_mat_fn);
+nav_k_spa_data = nav_kspa_data_read(data_fn);
 
 disp('-finished- ');
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
 close all;
+[kx_length ch_nr shot_nr dyn_nr] = size(nav_k_spa_data);
 
 nav_im_recon_nufft = [];
-for dyn = 1:4
+for dyn = 1:dyn_nr
     %=============== recon parameters =========================
-    recon_par.ignore_kz = 0;
-    recon_par.recon_dim  = [26 26 10];
+    recon_par.ignore_kz = 1;
+    recon_par.recon_dim  = [36 36 1];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
-    recon_par.end_point = []; %or []: till the end;
+    recon_par.end_point = 2000; %[]; %or []: till the end;
     recon_par.interations = 10;
     recon_par.lamda = 0.1;
     recon_par.recon_all_shot = 1;
@@ -45,10 +45,19 @@ for dyn = 1:4
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
     %========================  END  =========================
+    if(~exist('nav_sense_map')&recon_par.sense_map_recon)
+        recon_par.update_SENSE_map = 1;
+    end   
     
-    nav_im_recon_nufft = cat(6, nav_im_recon_nufft, NUFFT_3D_recon(data_mat_fn,trj_mat_fn,recon_par));
+    if(recon_par.update_SENSE_map)
+        nav_sense_map = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
+    else
+        nav_sense_map = ones(recon_par.recon_dim);
+    end
+    
+    nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map);
+    nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
 end
-save(data_mat_fn, 'nav_im_recon_nufft','-append');
 disp('-finished- ');
 %% -----BART recon -------%
 %{
@@ -82,13 +91,12 @@ save(data_fn, 'reco_pics','igrid','igrid_rss','-append');
 close all; clc
 disp(' unwrap nav phase (2D) & fast rigid motion estimation...')
 
-load(data_mat_fn);
 clear PE_estimation
 
 ref_shot_ix = 1;
 valid_data_ratio = 0.4; % pixels with highest 40% intensity are used for processing
 
-for dyn = 1:4;
+for dyn = 1:dyn_nr
     
     nav_im_to_unwrap = permute(nav_im_recon_nufft(:,:,1,:,:,dyn), [1 2 4 5 6 3]);  %[x,y,z,ch,shot,dyn] ->[x,y,shot,ch,dyn,z] this is 2D
     nav_ima_phase_unwrapped = spiral_nav_phase_unwrapping_2D(nav_im_to_unwrap, ref_shot_ix);
@@ -103,21 +111,19 @@ end
 PE_estimation.nav_kx_dim = size(nav_im_recon_nufft, 1);
 PE_estimation.nav_ky_dim = size(nav_im_recon_nufft, 2);
 
-save(data_mat_fn, 'PE_estimation','-append');
 disp('-finished- ');
 %% TSE data sorting and default recon
 close all; clc
 disp(' TSE data sorting and default recon...')
 
-[ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_defakult_recon, TSE_sense_map] = ...
+[ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map] = ...
     TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn);
 save(data_mat_fn, 'ima_k_spa_data', 'ima_default_recon', 'TSE','TSE_sense_map','-append');
 
 figure(606); immontage4D(permute(abs(ima_default_recon(80:240,:,:,:)),[1 2 4 3]), [10 120]);
 disp('-finished- ');
 
-%% TSE data correction
-% load(data_mat_fn);
+%% TSE data linear phase error correction
 correction_shot_range = 15:28;
 
 
@@ -125,3 +131,6 @@ raw_fn.sense_ref_fn = sense_ref_fn;
 raw_fn.data_fn = data_fn;
 raw_fn.coil_survey_fn = coil_survey_fn;
 im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation,  correction_shot_range, raw_fn);
+
+%% TSE data non-rigid phase error correction (iterative)
+image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE_sens_map, phase_error_maps);

@@ -1,5 +1,8 @@
-function nav_kspa_data_read(fn, save_fn)
-
+function nav_k_spa_data = nav_kspa_data_read(fn)
+%
+%OUT
+%
+%nav_k_spa_data:    raw navigator k-space data
 
 MR_TSEDPnav_data = MRecon(fn);
 
@@ -27,14 +30,6 @@ nav_k_spa_data = reshape(nav_k_spa_data,kx, ch_nr, shots_per_volumn, n_dyn); %fo
 [kx, n_ch, shots, diffusion_setting] = size(nav_k_spa_data)
 
 nav_k_spa_data = nav_k_spa_data(kx/2+1:end,:,:,:,:); %for DPnav when no pi jump happens
-
-%% SAVE DATA
-
-if(exist(save_fn)>0)
-    save(save_fn, 'nav_k_spa_data','-append');
-else
-    save(save_fn, 'nav_k_spa_data');
-end
 
 
 

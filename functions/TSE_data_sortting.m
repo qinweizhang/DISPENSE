@@ -51,7 +51,7 @@ k_line_per_shot = first_echoes_ty1_first_ch(2) - first_echoes_ty1_first_ch(1);
 for k=first_echoes_ty1_first_ch(1):length(shot)
     shot(k)=ceil((k-first_echoes_ty1_first_ch(1) + 1) / k_line_per_shot);
 end
-max(shot)
+disp(['total shots: ', num2str(max(shot))]);
 
 %-------------match labels ky kz shot to data
 ky_all = MR_DPstiTSE.Parameter.Labels.Index.ky;

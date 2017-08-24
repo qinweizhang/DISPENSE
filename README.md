@@ -1,7 +1,7 @@
-# SoSND
-Stack of Spiral Navigated Diffusion: a DPsti-TSE based method
+# SoSAD
+Stack of Spiral Aided Diffusion: a DPsti-TSE based method
 
-**This repo describes all the details for the Stack of Spiral Navigated Diffusion Prepared Stimulated-echo Sequence (SoSND) implementation.**
+**This repo describes all the details for the Stack of Spiral AIded Diffusion PREpared Stimulated-echo Sequence (SoSAIDPRESS) implementation.**
 
 ---
 

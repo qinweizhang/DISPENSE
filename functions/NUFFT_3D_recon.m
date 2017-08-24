@@ -1,10 +1,10 @@
-function nav_im_recon_nufft = NUFFT_3D_recon(data_fn,trj_fn,recon_par)
+function nav_im_recon_nufft = NUFFT_3D_recon(nav_k_spa_data,trj_fn,recon_par,nav_sens_map)
 
 %OUTPUT
 %
 % nav_im_recon_nufft: reconed navigator image in size of [x,y,z,ch,shot]
 
-load(trj_fn); load(data_fn);
+load(trj_fn); 
 
 % display singal quality
 dist = abs(trj_meas_kx + i .* trj_meas_ky);
@@ -21,29 +21,6 @@ end
 
 selected_point = recon_par.skip_point+1:recon_par.end_point;
 
-%% calc nav_sens_maps
-if(recon_par.sense_map_recon)
-    %get k space
-    if(exist('nav_sens_map')&(~recon_par.update_SENSE_map))
-    else
-        if(strcmp(recon_par.sense_calc_method, 'ecalib'))
-            
-            nav_sens_map = get_sense_map_ecalib(recon_par.data_fn,recon_par.recon_dim );
-            
-        elseif (strcmp(recon_par.sense_calc_method, 'external'))
-            
-            nav_sens_map = get_sense_map_external(recon_par.sense_ref, recon_par.data_fn, recon_par.coil_survey, recon_par.recon_dim);
-        end
-        
-        %normalize sense maps
-        nav_sens_map = normalize_sense_map(nav_sens_map);
-        
-        save(data_fn, 'nav_sens_map','-append');
-    end
-    
-else
-    nav_sens_map = ones(recon_par.recon_dim);
-end
 
 
 

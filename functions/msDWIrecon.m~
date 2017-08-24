@@ -1,0 +1,31 @@
+% msDWIrecon: reconstructed multishot phase incoherent DWI images
+% 
+% 
+% INPUT
+% k_spa:              phase inhoerent k space data in [kx ky kz n_coil n_shots]
+% sensemaps:          sense maps in [kx ky kz n_coil]
+% phase_error_maps:   phase maps for every shot in [kx ky kz 1 n_shots]
+% recon_par:          reconstruction parameters structure
+% 
+% OUTPUT
+% image_corrected:    reconstructed image
+%
+% (c) Qinwei Zhang (q.zhang@amc.uva.nl) 2017 @AMC 
+
+
+
+function image_corrected = msDWIrecon(k_spa, sensemaps, phase_error_maps, recon_par)
+
+
+
+
+
+
+ A=FPSoperator(sensemaps, phase_error_maps, image_dim, coil_nr, shots_nr, mask);
+ 
+ 
+ nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,@L2Norm,recon_par.lamda,'maxit',recon_par.interations,'tol', 1e-10);
+ 
+
+
+end

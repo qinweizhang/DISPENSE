@@ -155,7 +155,7 @@ recon_range = find((shot_all_points_1d >= correction_shot_range(1)) &(shot_all_p
 
 % Uncorrected
 
-nufft_dim = round(max(traj_nufft_uncor,[],2) - min(traj_nufft_uncor,[],2)+1);
+nufft_uncor_dim = round(max(traj_nufft_uncor,[],2) - min(traj_nufft_uncor,[],2)+1)';
 
 % scale trajectory [-pi pi]
 scale_factor_x = pi / max(abs(traj_nufft_uncor(1,:)));
@@ -168,17 +168,16 @@ traj_nufft_ideal_scaled(:,3) = traj_nufft_uncor(3,:) * scale_factor_z;
 traj_nufft_ideal_scaled = double(traj_nufft_ideal_scaled);
 
 clear im_recon_nufft_uncor im_recon_nufft_uncor_fftshifted
-x_dim = nufft_dim(1); y_dim = nufft_dim(2); z_dim = nufft_dim(3);
 
 oversample_factor = 3;
 if( gen_sense_map )  %use sense imformation
     
-    TSE_sense_map = get_sense_map_external(raw_fn.sense_ref_fn, raw_fn.data_fn, raw_fn.coil_survey_fn, [x_dim, y_dim, z_dim]);
+    TSE_sense_map = get_sense_map_external(raw_fn.sense_ref_fn, raw_fn.data_fn, raw_fn.coil_survey_fn, nufft_uncor_dim);
     TSE_sense_map = normalize_sense_map(TSE_sense_map);
     
-    A=nuFTOperator(traj_nufft_ideal_scaled(recon_range,:),[x_dim, y_dim, z_dim],TSE_sense_map,oversample_factor);
+    A=nuFTOperator(traj_nufft_ideal_scaled(recon_range,:),nufft_uncor_dim,TSE_sense_map,oversample_factor);
 else
-    A=nuFTOperator(traj_nufft_ideal_scaled(recon_range,:),[x_dim, y_dim, z_dim],ones(x_dim, y_dim, z_dim),oversample_factor);
+    A=nuFTOperator(traj_nufft_ideal_scaled(recon_range,:),nufft_uncor_dim,ones(nufft_uncor_dim),oversample_factor);
 end
 % im_recon_nufft_uncor=regularizedReconstruction(A,col(sig_nufft_uncor),@L2Norm,0.5,'maxit',25);
 im_recon_nufft_uncor=A'*col(sig_nufft_uncor(recon_range,:));
@@ -190,7 +189,7 @@ figure(22); montage(permute(abs(im_recon_nufft_uncor),[1 2 4 3]),'displayrange',
 % Corrected
 
 % scale trajectory [-pi pi]
-nufft_dim = round(max(traj_nufft_cor,[],2) - min(traj_nufft_cor,[],2)+1);
+nufft_cor_dim = round(max(traj_nufft_cor,[],2) - min(traj_nufft_cor,[],2)+1)';
 
 
 scale_factor_x = pi / max(abs(traj_nufft_cor(1,:)));
@@ -206,19 +205,18 @@ clear im_recon_nufft_cor im_recon_nufft_cor_fftshifted
 oversample_factor = 3;
 if( gen_sense_map )   %use sense imformation
     
-    TSE_sense_map = get_sense_map_external(raw_fn.sense_ref_fn, raw_fn.data_fn, raw_fn.coil_survey_fn, [x_dim, y_dim, z_dim]);
+    TSE_sense_map = get_sense_map_external(raw_fn.sense_ref_fn, raw_fn.data_fn, raw_fn.coil_survey_fn, nufft_cor_dim);
     TSE_sense_map = normalize_sense_map(TSE_sense_map);
     
-    A=nuFTOperator(traj_nufft_cor_scaled(recon_range,:),[nufft_dim(1), nufft_dim(2), nufft_dim(3)],TSE_sense_map,oversample_factor);
+    A=nuFTOperator(traj_nufft_cor_scaled(recon_range,:),nufft_cor_dim,TSE_sense_map,oversample_factor);
 else
-    %     A=nuFTOperator(traj_nufft_cor_scaled,[nufft_dim(1), nufft_dim(2), nufft_dim(3)],ones(nufft_dim(1), nufft_dim(2), nufft_dim(3),ch_dim),oversample_factor);
-    A=nuFTOperator(traj_nufft_cor_scaled(recon_range,:),[nufft_dim(1), nufft_dim(2), nufft_dim(3)],ones(nufft_dim(1), nufft_dim(2), nufft_dim(3)),oversample_factor);
+    A=nuFTOperator(traj_nufft_cor_scaled(recon_range,:),nufft_cor_dim,ones(nufft_cor_dim),oversample_factor);
 end
 
 
 
-% im_recon_nufft_cor=regularizedReconstruction(A,col(sig_nufft_cor(recon_range,:)),@L2Norm,0.5,'maxit',25);
-im_recon_nufft_cor=A'*col(sig_nufft_cor(recon_range,:));
+im_recon_nufft_cor=regularizedReconstruction(A,col(sig_nufft_cor(recon_range,:)),@L2Norm,0.5,'maxit',25);
+% im_recon_nufft_cor=A'*col(sig_nufft_cor(recon_range,:));
 
 figure(24); montage(permute(abs(im_recon_nufft_cor ),[1 2 4 3]),'displayrange',[]); title('cor')
 
