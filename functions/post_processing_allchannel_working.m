@@ -1,8 +1,8 @@
         %% set Matlab path and TOOLBOX_PATH environment variable
 clear; close all;
 clc
-current_mat_file = 'data_Sc09_3D.mat';
-raw_data_fn = 'dp_25072017_1801140_9_2_wipdpstisosadlinearV4.raw';
+current_mat_file = 'data_Sc6_2D.mat';
+raw_data_fn = 'dp_10052017_1633195_6_2_wip3ddpnavlinearexperiment1senseV4.raw';
 %% 3D sprial navigator data phase unwrapping
 % optional not part of the recon pipeline
 
@@ -209,7 +209,7 @@ DP_Ks_data_all_cor = ima_k_spa_data_sort_ch_pi_shifted; % [kx_points, ch, klines
 
 
 j = sqrt(-1);
-dummyshot = 3; 
+dummyshot = 0; 
 for nr_shot = 1:nav_shot   %dyn for spiral is the same as shot for DP
             
     nr_shot
@@ -233,11 +233,11 @@ for nr_shot = 1:nav_shot   %dyn for spiral is the same as shot for DP
 %         DP_Ks_data_all_cor(:,:,indx) = DP_Ks_data_all_cor(:,:,indx) .* exp(-j*global_phase(1,nr_shot) ); %the simulated introduced phase is doubled by the navigator
 
 % >>>>>>>>>>>>>> use input phase error to correct <<<<<<<<<<<<<<<<<<<<<
-        traj_1D_x_cor(indx,:) = traj_1D_x_cor(indx,:) - linear_phase_error_input_x_in_TSEksp_pixel(dummyshot + nr_shot ) ; 
-        traj_1D_y_cor(indx) = traj_1D_y_cor(indx) - linear_phase_error_input_y_in_TSEksp_pixel(dummyshot + nr_shot ); 
+%         traj_1D_x_cor(indx,:) = traj_1D_x_cor(indx,:) - linear_phase_error_input_x_in_TSEksp_pixel(dummyshot + nr_shot ) ; 
+%         traj_1D_y_cor(indx) = traj_1D_y_cor(indx) - linear_phase_error_input_y_in_TSEksp_pixel(dummyshot + nr_shot ); 
 %         traj_1D_z_cor(indx) = traj_1D_z_cor(indx) - linear_phase_error_input_z_in_TSEksp_pixel(dummyshot + nr_shot  ); 
 %         % global phase error in rad
-%         DP_Ks_data_all_cor(:,:,indx) = DP_Ks_data_all_cor(:,:,indx) .* exp(-j*global_phase_error_input_match_rad(dummyshot + nr_shot ) ); 
+        DP_Ks_data_all_cor(:,:,indx) = DP_Ks_data_all_cor(:,:,indx) .* exp(-j*global_phase_error_input_match_rad(dummyshot + nr_shot ) ); 
 %         if(nr_shot~=3)
 %             DP_Ks_data_all_cor(:,:,indx) = 0;
 %         end

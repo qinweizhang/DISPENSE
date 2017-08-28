@@ -1,4 +1,4 @@
-function  A = nuFTOperator(trajectory, imageDim, sensmaps,saveMemory)
+function  A = nuFTOperator(trajectory, imageDim, sensmaps, os)
 
 % usage:
 %    A = nuFTOperator(trajectory, imageDim, sensmaps)
@@ -7,13 +7,10 @@ function  A = nuFTOperator(trajectory, imageDim, sensmaps,saveMemory)
 % trajectory = Nt x 2 = arbitrary trajectory in 2D k-space
 % densityComp = variable density compensation vector (=1 if no comp.)
 % sensmaps = Nr x Nc x #coils
-% os = oversampling (default=2)
-
-%still Thimo Hugger's (formerly known as Grotz) nufft-operator for CG-SENSE
-%adapted for large 3D retrospective motion correction problems
-
+% os = oversampling (default=1)
 
 if nargin==0 % default constructor
+    s.dim = [];
     s.numCoils = [];
     s.imageDim = [];
     s.adjoint = 0;
@@ -22,27 +19,41 @@ if nargin==0 % default constructor
     s.sensmaps = {};
     s.nufftStruct = [];
 else
+    
+    if size(trajectory,2) == 3 && length(imageDim)==3
+        if imageDim(3) == 1
+            s.dim = 2;
+            trajectory = trajectory(:,1:2); %remove 3rd dimensions
+            imageDim(3) = [];
+        else
+            %normal 3d case
+            s.dim = 3;
+        end
+    elseif size(trajectory,2) == 2 && length(imageDim)==3
+        %this makes only sense if imageDim(3) == 1
+        if imageDim(3) == 1
+            s.dim = 2;
+            imageDim(3) = [];
+        else
+            warning('image dim and trajectory dim do not match.')
+        end
+    elseif size(trajectory,2) == 2 && length(imageDim)==2
+        %normal 2d case
+        s.dim = 2;
+    end
+     
+    %check coil sensitivity dimension
     if nargin<=2 || isempty(sensmaps)
         s.numCoils = 1;
     else
-        if size(trajectory,2) == 3 && length(size(sensmaps))== 4
-            s.numCoils = size(sensmaps, length(size(sensmaps)));
-        end
-        if size(trajectory,2) == 3 && length(size(sensmaps))== 3
-            s.numCoils = 1;
-        end
-        if size(trajectory,2) == 2 && length(size(sensmaps))== 3
-            s.numCoils = size(sensmaps, length(size(sensmaps)));
-        end
-        if size(trajectory,2) == 2 && length(size(sensmaps))== 2
-            s.numCoils = 1;
-        end
+        s.numCoils = size(sensmaps,s.dim+1);
     end
-    if nargin<=3
-        saveMemory = false;
+   
+    %nufft oversampling
+    if nargin<=3 || isempty(os)
+        os = 1;
     end
     
-    os = 2; %we always want to have two-fold oversmapling
     s.imageDim = imageDim;
     s.adjoint = 0;
     s.trajectory_length = size(trajectory,1);
@@ -72,6 +83,7 @@ else
     end
     
     if size(trajectory,2) == 3
+       %trajectory = [trajectory(:,2), -trajectory(:,1) ,trajectory(:,3)]; %orginal gut und bewaehrt
        trajectory = [trajectory(:,1),  trajectory(:,2) ,trajectory(:,3)];
        n_shift = [imageDim(1)/2-1 imageDim(2)/2-1 round(imageDim(3)/2)-1]; %stimmt fuer ungerade Anzahl UND gerade Anzahl
     elseif size(trajectory,2) ==2
@@ -82,18 +94,9 @@ else
     end
     % the default fft shift is [N(1)/2 N(2)/2 N(3)/2]
 
-    %traj=reshape(trajectory,[nd*nl*ns*nt*3])*2*pi;
-   
-        %the fft recon
-        if saveMemory
-            %use table lookup for interpolation kernels
-            s.nufftStruct = nufft_init(trajectory, imageDim, s.nufftNeighbors, round(os*imageDim),n_shift,'table',2^20,'minmax:kb');
-            display('Using memory efficient table lookup for nufft.')
-        else
-            %use precomputed kernel
-            s.nufftStruct = nufft_init(trajectory, imageDim, s.nufftNeighbors, round(os*imageDim),n_shift);
-        end
-        
+    %the fft recon
+    s.nufftStruct = nufft_init(trajectory, imageDim, s.nufftNeighbors, round(os*imageDim),n_shift,'kaiser');
+%     s.nufftStruct = nufft_init(trajectory, imageDim, s.nufftNeighbors, round(os*imageDim));
 end
 
 A = class(s,'nuFTOperator');

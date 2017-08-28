@@ -5,7 +5,7 @@ if strcmp(class(A),'nuFTOperator')
         Q = zeros(size(A));
         for k=1:A.numCoils
             Q = Q + nufft_adj(B((k-1)*A.trajectory_length+1:k*A.trajectory_length), A.nufftStruct) .* conj(A.sensmaps{k});
-       end
+        end
         Q = Q / sqrt(prod(A.imageDim));
 
     else

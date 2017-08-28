@@ -4,8 +4,8 @@ function  A = FPSoperator(sensemaps, phase_error_maps, image_dim, coil_nr, shots
 % 
 % 
 % 
-% sensemaps in size of [nx ny nz nc]
-% phase error maps in size of [nx ny nz nc nshots]
+% sensemaps in size of [ny nz nc]
+% phase error maps in size of [ny nz 1 nshots]
 % image_dim =  [nx ny nz]
 
 

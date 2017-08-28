@@ -1,4 +1,4 @@
-function [ima_k_spa_data,ky_matched,kz_matched,shot_matched, ch_dim,kspa_sorted, ima_data, TSE_sense_map] = TSE_data_sortting(raw_data_fn, sense_ref_fn, coil_survey_fn)
+function [ima_k_spa_data,ky_matched,kz_matched,shot_matched, ch_dim,kspa_sorted, ima_data, TSE_sense_map, varargout] = TSE_data_sortting(raw_data_fn, sense_ref_fn, coil_survey_fn)
 
 %INPUT
 %
@@ -15,6 +15,7 @@ function [ima_k_spa_data,ky_matched,kz_matched,shot_matched, ch_dim,kspa_sorted,
 %kspa_sorted:       sorted kspace
 %ima_data:          uncorrectd image data.
 %TSE_sense_map:     TSE sense maps for TSE recon
+%varargout:         optional: kx_range ky_range kz_range
 
 
 MR_DPstiTSE = MRecon(raw_data_fn);
@@ -101,23 +102,42 @@ MR_DPstiTSE.K2IP;
 MR_DPstiTSE.GridderNormalization;
 
 % % --------------Calculate SENSE object-------------
+x = size(MR_DPstiTSE.Data,1);
+y = size(MR_DPstiTSE.Data,2);
+z = size(MR_DPstiTSE.Data,3);
 MR_sense = MRsense(sense_ref_fn, raw_data_fn, coil_survey_fn);
 MR_sense.Mask = 1;
 MR_sense.MatchTargetSize = 1;
+MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
 MR_sense.Perform;
 % % ----------------------end-----------------------
 MR_DPstiTSE.Parameter.Recon.Sensitivities = MR_sense;
 
-MR_DPstiTSE.SENSEUnfold;  %no sense here
+% MR_DPstiTSE.SENSEUnfold;  %no sense here 
+ warning('Kerry: SENSE unfolder disabled for this case!'); MR_DPstiTSE.CombineCoils;
+
 MR_DPstiTSE.ConcomitantFieldCorrection;
 MR_DPstiTSE.DivideFlowSegments;
 
-MR_DPstiTSE.ZeroFill;
+% MR_DPstiTSE.ZeroFill;  
+warning('Kerry: zeros filling unfolder disabled for this case!'); 
 MR_DPstiTSE.FlowPhaseCorrection;
 MR_DPstiTSE.RotateImage;
 MR_DPstiTSE.ShowData;
 ima_data = squeeze(double(MR_DPstiTSE.Data));
 TSE_sense_map = MR_sense.Sensitivity;
 TSE_sense_map = TSE_sense_map./max(abs(TSE_sense_map(:)));
+
+if (nargout>=9)
+    varargout{1} =  MR_DPstiTSE.Parameter.Encoding.XRange(1,:);
+end
+if(nargout>=10)
+    varargout{2} = MR_DPstiTSE.Parameter.Encoding.YRange(1,:);
+end
+if(nargout>=11)
+    varargout{3} = MR_DPstiTSE.Parameter.Encoding.ZRange(1,:);
+end
+        
 
 end

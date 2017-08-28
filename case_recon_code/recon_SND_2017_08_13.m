@@ -45,15 +45,17 @@ for dyn = 1:dyn_nr
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
     %========================  END  =========================
-    if(~exist('nav_sense_map')&recon_par.sense_map_recon)
+    if(~exist('nav_sense_map', 'var')&&recon_par.sense_map_recon)
         recon_par.update_SENSE_map = 1;
-    end   
+    end
     
     if(recon_par.update_SENSE_map)
         nav_sense_map = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
-    else
+    elseif(recon_par.sense_map_recon == 0)
         nav_sense_map = ones(recon_par.recon_dim);
     end
+    nav_sense_map = normalize_sense_map(nav_sense_map);
+    
     
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map);
     nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
@@ -87,50 +89,75 @@ figure(204); montage(permute(abs(reco_pics),[1 2 4 3]),'displayrange',[])
 figure(205); montage(permute(angle(reco_pics),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet
 save(data_fn, 'reco_pics','igrid','igrid_rss','-append');
 %}
-%% unwrap nav phase (2D) & fast rigid motion estimation
-close all; clc
-disp(' unwrap nav phase (2D) & fast rigid motion estimation...')
-
-clear PE_estimation
-
-ref_shot_ix = 1;
-valid_data_ratio = 0.4; % pixels with highest 40% intensity are used for processing
-
-for dyn = 1:dyn_nr
-    
-    nav_im_to_unwrap = permute(nav_im_recon_nufft(:,:,1,:,:,dyn), [1 2 4 5 6 3]);  %[x,y,z,ch,shot,dyn] ->[x,y,shot,ch,dyn,z] this is 2D
-    nav_ima_phase_unwrapped = spiral_nav_phase_unwrapping_2D(nav_im_to_unwrap, ref_shot_ix);
-    
-    [nav_ima_phase_unwrapped_diff, fitted_nav_ima_phase, linear_phase_xy,global_phase, global_phase_diff_initial] = ...
-        rigidMotion_parameter_calculation(nav_im_to_unwrap, nav_ima_phase_unwrapped, ref_shot_ix, valid_data_ratio);  %nav_kspa_to_process  in kspace and with size of [kx ky ch shot]
-    
-    PE_estimation.linear_phase_xy_all(:,:,:,dyn) = (linear_phase_xy);
-    PE_estimation.global_phase_all(:,:,dyn) = (global_phase);
-    
-end
-PE_estimation.nav_kx_dim = size(nav_im_recon_nufft, 1);
-PE_estimation.nav_ky_dim = size(nav_im_recon_nufft, 2);
-
-disp('-finished- ');
 %% TSE data sorting and default recon
 close all; clc
 disp(' TSE data sorting and default recon...')
 
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map] = ...
     TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn);
-save(data_mat_fn, 'ima_k_spa_data', 'ima_default_recon', 'TSE','TSE_sense_map','-append');
+
 
 figure(606); immontage4D(permute(abs(ima_default_recon(80:240,:,:,:)),[1 2 4 3]), [10 120]);
 disp('-finished- ');
 
-%% TSE data linear phase error correction
-correction_shot_range = 15:28;
-
-
-raw_fn.sense_ref_fn = sense_ref_fn;
-raw_fn.data_fn = data_fn;
-raw_fn.coil_survey_fn = coil_survey_fn;
-im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation,  correction_shot_range, raw_fn);
-
 %% TSE data non-rigid phase error correction (iterative)
-image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE_sens_map, phase_error_maps);
+TSE.dyn_dim = dyn_nr;
+nav_im = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
+
+%parameters for DPsti_TSE_phase_error_cor
+pars.sense_map = 'external';  % external or ecalib
+TSE_sense_map  = [];
+pars.data_fn = data_fn;
+pars.sense_ref = sense_ref_fn;
+pars.coil_survey = coil_survey_fn;
+
+pars.enabled_ch = [1 4 10 14];
+pars.b0_shots = [];
+pars.nonb0_shots = 15:28;
+pars.recon_x_locs = 60:100;
+
+
+
+image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_im, pars);
+
+%% Linear motion correction
+rigid_motion_correction = 0;
+if(rigid_motion_correction)
+    %% unwrap nav phase (2D) & fast rigid motion estimation
+    close all; clc
+    disp(' unwrap nav phase (2D) & fast rigid motion estimation...')
+    
+    clear PE_estimation
+    
+    ref_shot_ix = 1;
+    valid_data_ratio = 0.4; % pixels with highest 40% intensity are used for processing
+    
+    nav_ima_phase_unwrapped = [];
+    for dyn = 1:dyn_nr
+        
+        nav_im_to_unwrap = permute(nav_im_recon_nufft(:,:,1,:,:,dyn), [1 2 4 5 6 3]);  %[x,y,z,ch,shot,dyn] ->[x,y,shot,ch,dyn,z] this is 2D
+        nav_ima_phase_unwrapped_dyn = spiral_nav_phase_unwrapping_2D(nav_im_to_unwrap, ref_shot_ix);
+        nav_ima_phase_unwrapped = cat(4,nav_ima_phase_unwrapped, nav_ima_phase_unwrapped_dyn);
+        
+        [nav_ima_phase_unwrapped_diff, fitted_nav_ima_phase, linear_phase_xy,global_phase, global_phase_diff_initial] = ...
+            rigidMotion_parameter_calculation(nav_im_to_unwrap, nav_ima_phase_unwrapped_dyn, ref_shot_ix, valid_data_ratio);  %nav_kspa_to_process  in kspace and with size of [kx ky ch shot]
+        
+        PE_estimation.linear_phase_xy_all(:,:,:,dyn) = (linear_phase_xy);
+        PE_estimation.global_phase_all(:,:,dyn) = (global_phase);
+        
+    end
+    PE_estimation.nav_kx_dim = size(nav_im_recon_nufft, 1);
+    PE_estimation.nav_ky_dim = size(nav_im_recon_nufft, 2);
+    
+    disp('-finished- ');
+    
+    
+    %% TSE data linear phase error correction
+    correction_shot_range = 15:28;
+    
+    
+    raw_fn.sense_ref_fn = sense_ref_fn;
+    raw_fn.data_fn = data_fn;
+    raw_fn.coil_survey_fn = coil_survey_fn;
+    im_recon_nufft_cor = Perform_2D_SN_DPsti_recon(ima_k_spa_data, TSE, PE_estimation,  correction_shot_range, raw_fn);
+end

@@ -70,7 +70,7 @@ for shot_nr = 1: end_shot_idx
     
     sig_kspa = nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr);
     
-    if(recon_par.sense_map_recon) %all in one recon
+    if(1) %(recon_par.sense_map_recon) %all in one recon
         sig_nufft = col(double(sig_kspa));
         
 %         nav_sens_map = conj(nav_sens_map);
@@ -99,7 +99,7 @@ for shot_nr = 1: end_shot_idx
             
             
             %call CG-SENSE with L2-norm regularization
-            nav_im_recon_nufft(:,:,:,ch)=regularizedReconstruction(A,sig_nufft',@L2Norm,recon_par.lamda,'maxit',recon_par.interations);
+            nav_im_recon_nufft(:,:,:,ch,shot_nr)=regularizedReconstruction(A,sig_nufft',@L2Norm,recon_par.lamda,'maxit',recon_par.interations);
             %             nav_im_recon_nufft(:,:,:,ch,shot_nr)=regularizedReconstruction(A,sig_nufft','maxit',recon_par.interations);
         end
         % im_recon_nufft = flipdim(flipdim(im_recon_nufft,1),2);

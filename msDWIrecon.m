@@ -2,15 +2,15 @@
 %
 %
 % INPUT
-% k_spa:              phase inhoerent k space data in [kx ky kz n_coil n_shots]
-% sensemaps:          sense maps in [kx ky kz n_coil]
-% phase_error_maps:   phase maps for every shot in [kx ky kz 1 n_shots]
-% pars:          reconstruction parameters structure
+% k_spa:              cpx phase inhoerent k space data in [ky kz n_coil n_shots]
+% sensemaps:          cpx sense maps in [ky kz n_coil]
+% phase_error_maps:   cpx phase maps for every shot in [ky kz 1 n_shots]
+% pars:               reconstruction parameters structure
 %
 % OUTPUT
 % image_corrected:    reconstructed image
 %
-% (c) Qinwei Zhang (q.zhang@amc.uva.nl) 2017 @AMC
+% (c) Qinwei Zhang (q.zhang@amc.uva.nl) 2017 @AMC Amsterdam
 
 
 
@@ -31,20 +31,23 @@ sense_map = squeeze(normalize_sense_map(permute(sense_map,[4 1 2 3]))); %normali
 phase_error = normalize_sense_map(phase_error); %miss use normalized_sense_map function to normalized phase_error map
 
 %% recon
-if strcmp(pars.method, 'CG_CENSE')
+if strcmp(pars.method, 'CG_SENSE')
+    
     mask = abs(kspa) > 0;
     A=FPSoperator(sense_map, phase_error, [ky_dim kz_dim], nc, ns, mask);
     
     b = col(kspa);
+    
+%         image_corrected = A'*b;  %direct inverse
+    %
     lamda =  pars.lamda;
     maxit =  pars.nit;
-    
     image_corrected=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', 1e-10);
     
     
-elseif strcmp(pars.method, 'POCS_CENSE')
+elseif strcmp(pars.method, 'POCS_ICE') %update phase map iteratively
     %TODO
-elseif strcmp(pars.method, 'LRT')
+elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
     %TODO
 else
     error('recon method not recognized...')

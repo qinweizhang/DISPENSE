@@ -28,8 +28,8 @@ warning_msg = sprintf('Kerry SENSE maps calc. : manually changed Kx, KyOversampl
 warning(warning_msg);
 warning_msg = sprintf('Kerry SENSE maps calc. : manually offcenter %1.2f %1.2f %1.2f>> %1.2f %1.2f %1.2f', ori_Offcentre(1), ori_Offcentre(2), ori_Offcentre(3), new_Offcentre(1), new_Offcentre(2), new_Offcentre(3));
 warning(warning_msg);
-str = sprintf('FOV: %1.2f %1.2f %1.2f', r.Parameter.Scan.FOV(1), r.Parameter.Scan.FOV(2), r.Parameter.Scan.FOV(3));
-disp(str);
+str = sprintf('FOV: %1.2f %1.2f %1.2f', )
+
 
 MR_sense = MRsense(s, r, survey);
 MR_sense.Mask = 1;
