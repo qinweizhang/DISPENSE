@@ -11,9 +11,9 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sa_13082017_1943583_12_2_wip_sc18_dpsti_sosad_linearV4.raw';
-sense_ref_fn = 'sa_13082017_1943050_1000_26_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sa_13082017_1940474_1000_21_wip_coilsurveyscanV4.raw';
+data_fn = 'sa_13082017_1958269_15_2_wip_sc18_dpsti_sosad_linearV4.raw';
+sense_ref_fn = 'sa_13082017_1957331_1000_34_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sa_13082017_1956371_1000_29_wip_coilsurveyscanV4.raw';
 
 trj_mat_fn = 'traj2_Sc29_27_28_for_Sc4.mat';
 
@@ -45,14 +45,16 @@ for dyn = 1:dyn_nr
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
     %========================  END  =========================
-    if(~exist('nav_sense_map', 'var')&&recon_par.sense_map_recon)
+     if(~exist('nav_sense_map', 'var')&&recon_par.sense_map_recon)
         recon_par.update_SENSE_map = 1;
     end
     
     if(recon_par.update_SENSE_map)
         nav_sense_map = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
-    elseif(recon_par.sense_map_recon == 0)
-        nav_sense_map = ones(recon_par.recon_dim);
+    end
+    
+    if(recon_par.sense_map_recon == 0)
+        nav_sense_map = ones([recon_par.recon_dim ch_nr]);
     end
     nav_sense_map = normalize_sense_map(nav_sense_map);
     
@@ -60,6 +62,9 @@ for dyn = 1:dyn_nr
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map);
     nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
 end
+% nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
+% nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
+
 disp('-finished- ');
 %% -----BART recon -------%
 %{
@@ -93,7 +98,7 @@ save(data_fn, 'reco_pics','igrid','igrid_rss','-append');
 close all; clc
 disp(' TSE data sorting and default recon...')
 
-[ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map] = ...
+[ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange] = ...
     TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn);
 
 
@@ -101,20 +106,22 @@ figure(606); immontage4D(permute(abs(ima_default_recon(80:240,:,:,:)),[1 2 4 3])
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative)
+TSE.kxrange = [-320 -1];
 TSE.dyn_dim = dyn_nr;
 nav_im = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
+TSE_sense_map = []; %calc again using get_sense_map_external
 
 %parameters for DPsti_TSE_phase_error_cor
 pars.sense_map = 'external';  % external or ecalib
-TSE_sense_map  = [];
+
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 
-pars.enabled_ch = [1 4 10 14];
+pars.enabled_ch = [1:38];
 pars.b0_shots = [];
-pars.nonb0_shots = 15:28;
-pars.recon_x_locs = 60:100;
+pars.nonb0_shots = 15:56;
+pars.recon_x_locs = 120:220;
 
 
 

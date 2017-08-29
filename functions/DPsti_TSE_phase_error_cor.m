@@ -33,7 +33,11 @@ end
 
 tic;
 kx_dim = TSE.kxrange(2) - TSE.kxrange(1) + 1;
-assert(kx_dim ==  size(ima_k_spa_data,1));
+assert(kx_dim >=  size(ima_k_spa_data,1));
+if(kx_dim>size(ima_k_spa_data,1))
+    rs_command = sprintf('resize -c 0 %d ', kx_dim);
+    ima_k_spa_data = bart(rs_command, ima_k_spa_data);
+end
 max_ky = max(abs(TSE.kyrange)); 
 max_kz = max(abs(TSE.kzrange));
 ky_dim = TSE.kyrange(2) - TSE.kyrange(1) + 1;  %max_ky * 2 + 1; 
@@ -43,8 +47,8 @@ sh_dim = range(TSE.shot_matched)+1;
 kspa_all = zeros(kx_dim, ky_dim, kz_dim, ch_dim, sh_dim);
 
 for prof_idx = 1:size(ima_k_spa_data, 2)
-    ky_idx = TSE.ky_matched(prof_idx) - TSE.kyrange(1) + 1;
-    kz_idx = TSE.kz_matched(prof_idx) - TSE.kzrange(1) + 1;
+    ky_idx = TSE.ky_matched(prof_idx) + floor(ky_dim/2)+1;
+    kz_idx = TSE.kz_matched(prof_idx) + floor(kz_dim/2)+1;
     ch_idx = mod(prof_idx, ch_dim) + 1;
     sh_idx = TSE.shot_matched(prof_idx);
     kspa_all(:,ky_idx,kz_idx,ch_idx, sh_idx) = ima_k_spa_data(:,prof_idx);
@@ -92,7 +96,7 @@ elseif(strcmp(pars.sense_map, 'external'))
         rs_command = sprintf('resize -c 0 %d', size(kspa_b0, 1));
         TSE_sense_map = bart(rs_command, TSE_sense_map);
     end
-    sense_map_3D = normalize_sense_map(TSE_sense_map(:,:,:,pars.enabled_ch ));
+    sense_map_3D = normalize_sense_map(TSE_sense_map(:,:,:,pars.enabled_ch ))+eps;
 else
     error('sense map source not indentified.')
 end
@@ -129,7 +133,7 @@ toc
 disp('Preprocessing on phase error data');
 tic
 %match size of nav_im and to kspa_xyz
-nav_im_1 = nav_im(:,:,:,nonb0_shots_range);
+nav_im_1 = double(nav_im(:,:,:,nonb0_shots_range));
 [kx, ky, kz, nc, nshot] = size(kspa_xyz);
 assert(size(nav_im_1, 4)==nshot);
 
@@ -140,8 +144,21 @@ nav_im_2 = bart('fft -i 7', nav_k_1);
 
 resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', kx, ky, kz, nshot);
 nav_im_2 = bart(resize_command_2, nav_im_2);
+nav_im_2 = nav_im_2./abs(nav_im_2); %magnitude to 1;
+nav_im_2(isnan(nav_im_2)) = 0; nav_im_2(isinf(nav_im_2)) = 0;
+
 phase_error_3D = nav_im_2;
+k0_idx = [floor(kx_dim/2)+1 floor(ky_dim/2)+1 floor(kz_dim/2)+1];
+
+for sh =1:nshot
+    if(abs(kspa_xyz(k0_idx(1),k0_idx(2),k0_idx(3), 1, sh))>0)
+        ref_shot = sh;
+    end
+end
+phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the first 
 phase_error_3D = normalize_sense_map(phase_error_3D); %miss use normalize_sense_map
+phase_error_3D = conj(bsxfun(@times, phase_error_3D, abs(sense_map_3D(:,:,:,1))>eps)) + eps; %mask the outer region
+
 
 figure(5);
 immontage4D(angle(phase_error_3D),[-pi pi]); colormap jet; title('phase error maps int.')
@@ -153,7 +170,7 @@ toc
 disp('recon');
 image_corrected = zeros(kx, ky, kz);
 tic;
-recon_x = [1:128]; %pars.recon_x_locs;
+recon_x = [120: 220]; %pars.recon_x_locs;
 for x_idx = 1:length(recon_x)
     
     recon_x_loc = recon_x(x_idx);
@@ -164,7 +181,7 @@ for x_idx = 1:length(recon_x)
     
     %=========select data. fixed=============================================
     kspa = squeeze(kspa_x_yz(recon_x_loc, :, :, :, :));
-    sense_map = squeeze(sense_map_3D(recon_x_loc,:,:,:));
+    sense_map = (squeeze(sense_map_3D(recon_x_loc,:,:,:)));
     phase_error = permute(squeeze(phase_error_3D(recon_x_loc,:,:,:,:)),[1 2 4 3]);
     %========================================================================
     
@@ -182,9 +199,10 @@ end
 
 toc;
 
-    %display
-    figure(102);
-    subplot(131); montage(permute(abs(im_b0),[1 2 4 3]),'displayrange',[]); title('b0');
-    subplot(132); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
-    subplot(133); montage(permute(abs(image_corrected),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
+%display
+figure(104);
+subplot(131); montage(permute(abs(im_b0),[1 2 4 3]),'displayrange',[]); title('b0');
+subplot(132); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
+subplot(133); montage(permute(abs(image_corrected),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
+
 end
