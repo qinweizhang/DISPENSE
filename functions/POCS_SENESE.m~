@@ -1,0 +1,51 @@
+%
+%
+% INPUT
+% 
+% k_spa:              cpx phase inhoerent k space data in [ky kz n_coil n_shots]
+% sensemaps:          cpx sense maps in [ky kz n_coil]
+% phase_error_maps:   cpx phase maps for every shot in [ky kz 1 n_shots]
+% pars:               reconstruction parameters structure
+% 
+% OUTPUT
+% sol:                solution in [ky kz]
+%
+% (c) q.zhang 2017 Amsterdam
+
+function sol = POCS_SENESE(kspa, sense_map, phase_error, pars)
+    [ky kz n_coil n_shots] = size(kspa);
+    x = zeros(ky, kz, n_shots); %initialize
+    x_esti = zeros(ky, kz);
+    
+    W = zeros(ky, kz);
+    ky_range = floor(ky/2-pars.POCS.kernelsize(1)/2):floor(ky/2+pars.POCS.kernelsize(1)/2)-1;
+    kz_range = floor(kz/2-pars.POCS.kernelsize(2)/2):floor(kz/2+pars.POCS.kernelsize(2)/2)-1;
+    W(ky_range, kz_range) = 1;
+    
+    
+    
+    for sh=1:n_shots
+        px_allshots(:,:,sh) = POCS_projection(x(:,:,sh), sense_map, kspa(:,:,:,sh));
+    end
+    
+    %shot-average
+    fpx_allshots = fft2d(px_allshots);
+    fpx_allshots_lf = bsxfun(@times, fpx_allshots, W);    
+    px_allshots_lr = ifft2d(fpx_allshots_lf);
+    
+    px_aver = mean(px_allshots.* (conj(px_allshots_lr) ./ abs(px_allshots_lr)),3); %remove lowresolution phase
+    
+    x_esti_old = x_esti;
+    x_esti = x_esti_old + pars.POCS.lamda.*(px_aver - x_esti_old);%update extimation
+    x = bsxfun(@times, x_esti, (px_allshots_lr./abs(px_allshots_lr)));
+    
+    residual_error = trace()
+    
+    
+    
+    
+    
+
+
+
+end

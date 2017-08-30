@@ -175,9 +175,11 @@ for x_idx = 1:length(recon_x)
     
     recon_x_loc = recon_x(x_idx);
     %recon parameter
-    pars.lamda=0.1;
-    pars.nit=10;
-    pars.method='CG_SENSE';
+    pars = initial_msDWIrecon_Pars;
+    pars.CG_SENSE_I.lamda=0.1;
+    pars.CG_SENSE_I.nit=10;
+    pars.CG_SENSE_I.tol = 1e-10;
+    pars.method='CG_SENSE_I';
     
     %=========select data. fixed=============================================
     kspa = squeeze(kspa_x_yz(recon_x_loc, :, :, :, :));

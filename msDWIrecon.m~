@@ -43,8 +43,8 @@ if strcmp(pars.method, 'CG_SENSE_I')
     %         image_corrected = A'*b;  %direct inverse
     lamda =  pars.CG_SENSE_I.lamda;
     maxit =  pars.CG_SENSE_I.nit;
-    tol =   pars.CG_SENSE_I.tol;
-    image_corrected=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', tol);
+    tol =   pars.CG_SENSE_I.nit
+    image_corrected=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', 1e-10);
 elseif strcmp(pars.method, 'CG_SENSE_K')    
     %% KSPACE CG_SENSE TODO
     
@@ -52,8 +52,7 @@ elseif strcmp(pars.method, 'CG_SENSE_K')
     
 elseif strcmp(pars.method, 'POCS_ICE') %update phase map iteratively
     %% POCS_ICE TODO
-    trj = [];
-    image_corrected = POCS_SENESE(kspa,trj, sense_map, pars);
+    image_corrected = POCS_SENESE(kspa, sense_map, phase_error, pars);
     
     
 elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
