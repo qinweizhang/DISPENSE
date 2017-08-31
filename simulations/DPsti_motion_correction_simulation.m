@@ -25,7 +25,7 @@ che=create_checkerboard([1,size(kspa_xyz_ref,2),size(kspa_xyz_ref,3)]);
 kspa_xyz_ref=bsxfun(@times,kspa_xyz_ref,che);
 kspa_xyz_ref=squeeze(kspa_xyz_ref);
 
-ima_ref = bart('fft -i 7',kspa_xyz_ref);
+ima_ref = ifft3d(kspa_xyz_ref);
 ima_ref_rss = bart('rss 8', ima_ref);
 figure(1); montage(permute(abs(ima_ref_rss),[1 2 4 3]),'displayrange',[]);
 
@@ -62,34 +62,34 @@ if(simulation)
         mask(1,:,:,1,sh) =full(m);
     end
     
-    
-    
-    
-    
-    %================SENSE undersampling===================================
-    %     kspa_xyz(:,1:2:end,:,:,:) = 0;
-    
     %================phase error for every shot============================
-%     phase_error_3D = ones(kx_dim, ky_dim, kz_dim, 1, sh_dim);
-    phase_error_3D = ones(kx_dim, ky_dim, 1, 1, sh_dim); %2D linear phase error
+    phase_error_3D = [];
     for shot = 1:sh_dim
-        %global phase error
-        %         phase_error_3D(:,:,:,1,shot) = exp(i .* shot .* ones(kx_dim, ky_dim, kz_dim));
+        %% global phase error
+        %         pe_temp = exp(1i .* shot .* ones(kx_dim, ky_dim, kz_dim));
+        %         phase_error_3D = cat(5, phase_error_3D, pe_temp);
+        %% linear phase error
+%         pe_2D = linear2Dmap(shot*3, 0.2, kx_dim, ky_dim);
+%         pe_temp = exp(1i .* pe_2D);
+%         phase_error_3D = cat(5, phase_error_3D, pe_temp);
         
-        %linear phase error
-        pe_2D = linear2Dmap(shot*3, 0.2, kx_dim, ky_dim);
-        phase_error_3D(:,:,1,1,shot) = exp(i .* pe_2D);
-        
-        %random phase error
-        %         phase_error_3D(:,:,:,1,shot) = exp(i .*2*pi* rand(kx_dim, ky_dim, kz_dim));
+        %% random phase error
+                rand_phase = 50 * pi *random_phase_map(kx_dim, ky_dim, kz_dim,1);
+                pe_temp = exp(1i.*rand_phase);
+                phase_error_3D = cat(5, phase_error_3D, pe_temp);
     end
     if(size(phase_error_3D, 3)~=kz_dim)
         phase_error_3D = repmat(phase_error_3D, [1 1 kz_dim 1 1 ]);
-    end
-    %======================================================================
+    end   
     %corrupted ima_ref
     im_pe = bsxfun(@times,ima_ref,phase_error_3D);
-    mask(:,47:57,20:30,:,:) = 1; %self_navigator size
+    %======================================================================
+    
+    %================self_navigator size===================================
+    mask(:,47:57,20:30,:,:) = 1; 
+    %================SENSE undersampling===================================
+%     mask(:,1:2:end,:,:,:) = 0;    
+    
     kspa_xyz = bsxfun(@times, fft3d(im_pe), mask);
     %     kspa_xyz = fft3d(im_pe);
     clear im_pe;
@@ -97,22 +97,22 @@ if(simulation)
     %add noise
     
     if noiselevel>0
-        kspa_xyz=kspa_xyz+(randn(size(kspa_xyz)).*mean(kspa_xyz(:)).*noiselevel).*(kspa_xyz~=0);
+        kspa_xyz=kspa_xyz+(randn(size(kspa_xyz)).*mean(kspa_xyz(find(abs(kspa_xyz)>0))).*noiselevel).*(abs(kspa_xyz)>0);
     end
-
-
-%to hybrid space
-clear kspa_x_yz;
-kspa_x_yz = ifft1d(kspa_xyz);
-
-
-%direct recon
-kk=sum(kspa_xyz,5);
-pp=bart('fft -i 7',kk);
-im_recon_direct=bart('rss 8',pp);
-figure(4); montage(permute(abs(im_recon_direct),[1 2 4 3]),'displayrange',[]); title('direct recon');
-clear kk pp
-
+    
+    
+    %to hybrid space
+    clear kspa_x_yz;
+    kspa_x_yz = ifft1d(kspa_xyz);
+    
+    
+    %direct recon
+    kk=sum(kspa_xyz,5);
+    pp=ifft3d(kk);
+    im_recon_direct=bart('rss 8',pp);
+    figure(4); montage(permute(abs(im_recon_direct),[1 2 4 3]),'displayrange',[]); title('direct recon');
+    clear kk pp
+    
 end
 toc;
 %% recon
@@ -124,23 +124,8 @@ for sh =1:sh_dim
         ref_shot = sh;
     end
 end
-phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the first 
+phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the first
 phase_error_3D = permute(normalize_sense_map(squeeze(phase_error_3D)),[1 2 3 5 4]); %miss use normalize_sense_map
-
-
-recon_x_loc = 90;
-
-%recon parameter
-pars = initial_msDWIrecon_Pars;
-pars.CG_SENSE_I.lamda=0.2;
-pars.CG_SENSE_I.nit=20;
-
-pars.POCS.kernelsize = [31 21];
-pars.POCS.nit = 20;
-pars.POCS.tol = 1e-10;
-pars.POCS.lamda = 0.1;
-
-pars.method='POCS_ICE'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 
 %=========select data. fixed=============================================
 kspa = squeeze(kspa_x_yz(recon_x_loc, :, :, :, :));
@@ -148,13 +133,28 @@ sense_map = squeeze(sense_map_3D(recon_x_loc,:,:,:));
 phase_error = permute(squeeze(phase_error_3D(recon_x_loc,:,:,:,:)),[1 2 4 3]);
 %========================================================================
 
-image_corrected = msDWIrecon(kspa, sense_map, phase_error, pars);
+recon_x_loc = 90;
 
-toc;
+%recon parameter
+pars = initial_msDWIrecon_Pars;
+pars.CG_SENSE_I.lamda=0.1;
+pars.CG_SENSE_I.nit=30;
+
+pars.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
+pars.POCS.nit = 50;
+pars.POCS.tol = 1e-10;
+pars.POCS.lamda = 1;
+pars.POCS.nufft = false;
+
+pars.method='POCS_ICE'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
+
+image_corrected = msDWIrecon(kspa, (sense_map), (phase_error), pars);
 
 
 %display
-figure(101);
+figure(102);
 subplot(131);imshow(squeeze(abs(ima_ref_rss(recon_x_loc,:,:))),[]); title('reference');
 subplot(132);imshow(squeeze(abs(im_recon_direct(recon_x_loc,:,:))),[]); title('direct recon');
-subplot(133);imshow(squeeze(abs(image_corrected)),[]); title('msDWIrecon');
+subplot(133);imshow(squeeze(abs(image_corrected)),[]); title('msDWIrecon'); xlabel(pars.method);
+
+toc;

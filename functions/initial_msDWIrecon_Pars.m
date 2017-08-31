@@ -11,10 +11,11 @@ pars.CG_SENSE_K.lamda=0.1;
 pars.CG_SENSE_K.nit=10;
 pars.CG_SENSE_K.tol = 1e-10;
 
-pars.POCS.kernelsize =[20 20];
+pars.POCS.Wsize =[10 10];
 pars.POCS.lamda = 0.1;
 pars.POCS.nit  = 10;
 pars.POCS.tol = 1e-10;
+pars.POCS.nufft = false;
 
 
 end

@@ -5,8 +5,8 @@
 %     ima_k_spa_data:             Unsorted TSE kspace data in [kx, nprofiles]
 %     TSE:                        Structure contains labels (ky, kz, shot, channel, dyn) for every profiles in ima_k_spa_data
 %     TSE_sense_map:              sense maps from sense reference scan
-%     nav_data:                   navigator cpx images for every shot in [nav_x nav_y nav_z shots]
-%
+%     nav_data:                   when using CG_SENSE_I: navigator cpx images for every shot in [nav_x nav_y nav_z shots]
+%                                 when using POCS_ICE:   navigator kspa data for every shot in [kx_nav channel shot]
 %     OUTPUT
 %
 %     image_corrected:            Corrected DPsti-TSE images
@@ -16,6 +16,7 @@
 function image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars)
 %% Data check
 max_shot = max(TSE.shot_matched);
+if(pars.msDWIrecon)
 assert(max_shot == size(nav_data, 4));
 assert(TSE.ch_dim == size(TSE_sense_map, 4)||isempty(TSE_sense_map));
 

@@ -105,7 +105,7 @@ disp(' TSE data sorting and default recon...')
 figure(606); immontage4D(permute(abs(ima_default_recon(80:240,:,:,:)),[1 2 4 3]), [10 120]);
 disp('-finished- ');
 
-%% TSE data non-rigid phase error correction (iterative)
+%% TSE data non-rigid phase error correction (iterative) CG_SENSE
 TSE.kxrange = [-320 -1];
 TSE.dyn_dim = dyn_nr;
 nav_im = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
@@ -123,11 +123,47 @@ pars.b0_shots = [];
 pars.nonb0_shots = 15:56;
 pars.recon_x_locs = 120:220;
 
+%paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
+pars.msDWIrecon = initial_msDWIrecon_Pars;
+pars.msDWIrecon.CG_SENSE_I.lamda=0.1;
+pars.msDWIrecon.CG_SENSE_I.nit=10;
+pars.msDWIrecon.CG_SENSE_I.tol = 1e-10;
+pars.msDWIrecon.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
+pars.msDWIrecon.POCS.nit = 50;
+pars.msDWIrecon.POCS.tol = 1e-10;
+pars.msDWIrecon.POCS.lamda = 1;
+pars.msDWIrecon.POCS.nufft = false;
 
-
+pars.msDWIrecon.method='POCS_ICE'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_im, pars);
 
+
+
 %% Linear motion correction
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
 rigid_motion_correction = 0;
 if(rigid_motion_correction)
     %% unwrap nav phase (2D) & fast rigid motion estimation

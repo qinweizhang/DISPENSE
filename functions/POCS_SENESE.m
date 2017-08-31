@@ -16,15 +16,16 @@ function sol = POCS_SENESE(kspa, trj, sense_map, pars)
 [ky kz n_coil n_shots] = size(kspa);
 x = zeros(ky, kz, n_shots); %initialize
 x_esti = zeros(ky, kz);
-it = 0;
+it = 1;
+residual_error = inf;
 
 W = zeros(ky, kz);
-ky_range = floor(ky/2-pars.POCS.kernelsize(1)/2):floor(ky/2+pars.POCS.kernelsize(1)/2)-1;
-kz_range = floor(kz/2-pars.POCS.kernelsize(2)/2):floor(kz/2+pars.POCS.kernelsize(2)/2)-1;
+ky_range = floor(ky/2-pars.POCS.Wsize(1)/2):floor(ky/2+pars.POCS.Wsize(1)/2)-1;
+kz_range = floor(kz/2-pars.POCS.Wsize(2)/2):floor(kz/2+pars.POCS.Wsize(2)/2)-1;
 W(ky_range, kz_range) = 1;
 
 
-while(it<pars.POCS.nit || residual_error>pars.POCS.tol)
+while(it<pars.POCS.nit && residual_error>pars.POCS.tol)
     
     for sh=1:n_shots
         px_allshots(:,:,sh) = POCS_projection(x(:,:,sh), sense_map, kspa(:,:,:,sh), trj);
@@ -35,21 +36,30 @@ while(it<pars.POCS.nit || residual_error>pars.POCS.tol)
     fpx_allshots_lf = bsxfun(@times, fpx_allshots, W);
     px_allshots_lr = ifft2d(fpx_allshots_lf);
     
-    px_aver = mean(px_allshots.* (conj(px_allshots_lr) ./ abs(px_allshots_lr)),3); %remove lowresolution phase
+    %remove lowresolution phase, i.e. make shots have the same lowres. phase
+%     px_aver = mean(px_allshots,3);
+    px_aver = mean(px_allshots.* (conj(px_allshots_lr) ./ abs(px_allshots_lr)),3); 
     
+    %update extimation
     x_esti_old = x_esti;
-    x_esti = x_esti_old + pars.POCS.lamda.*(px_aver - x_esti_old);      %update extimation
-    x = bsxfun(@times, x_esti, (px_allshots_lr./abs(px_allshots_lr)));  %update initial point for next step (recover phase)
+    x_esti = x_esti_old + pars.POCS.lamda.*(px_aver - x_esti_old);      
     
-    residual_error = trace((x_esti-x_esti_old)'*(x_esti-x_esti_old)) / trace(x_esti_old'*x_esti_old);  
+    %update initial point for next step (recover true shot by shot phase)
+    x = bsxfun(@times, x_esti, (px_allshots_lr./abs(px_allshots_lr)));
     
-    it = it +1;
-    
+    if(it>1)
+        residual_error = trace((x_esti-x_esti_old)'*(x_esti-x_esti_old)) / trace(x_esti_old'*x_esti_old);
+    end
+
     disp(['nit: ', num2str(it)]); 
     disp(['residual_error: ', num2str(residual_error)]); 
     
-    figure(11); subplot(121); imshow(abs(x_esti),[]); subplot(122); imshow(angle(x_esti),[-pi pi]);
+    figure(11); 
+    subplot(131); imshow(abs(x_esti),[]); title('esti. mag.');
+    subplot(132); imshow(angle(x_esti),[-pi pi]); title('esti. phase');drawnow(); 
+    subplot(133); plot(it, log10(residual_error),'ro'); xlim([1 pars.POCS.nit]); ylim([-11 0]); hold on;
     
+    it = it +1;
     
     
 end
