@@ -13,6 +13,7 @@
 %
 %     (c) Qinwei Zhang (q.zhang@amc.uva.nl) 2017 @AMC Amsterdam
 
+% TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 function image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars)
 %% Data check
 max_shot = max(TSE.shot_matched);
@@ -155,10 +156,10 @@ for sh =1:nshot
         ref_shot = sh;
     end
 end
-phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the first 
+phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the ref 
 phase_error_3D = normalize_sense_map(phase_error_3D); %miss use normalize_sense_map
-phase_error_3D = conj(bsxfun(@times, phase_error_3D, abs(sense_map_3D(:,:,:,1))>eps)) + eps; %mask the outer region
-
+% phase_error_3D = conj(bsxfun(@times, phase_error_3D, abs(sense_map_3D(:,:,:,1))>eps)) + eps; %mask the outer region
+phase_error_3D = conj(bsxfun(@times, phase_error_3D, abs(sense_map_3D(:,:,:,1))>eps));  %conj or not???
 
 figure(5);
 immontage4D(angle(phase_error_3D),[-pi pi]); colormap jet; title('phase error maps int.')

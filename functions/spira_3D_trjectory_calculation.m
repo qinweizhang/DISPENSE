@@ -5,8 +5,9 @@ function spira_3D_trjectory_calculation(trj_save_fn, d)
 [f,path]=uigetfile(fullfile(cd,'*.raw'),'M, P,  S','MultiSelect','on');
 fn_M = strcat(path,f{1,1});
 fn_P = strcat(path,f{1,2});
-fn_S = strcat(path,f{1,3});
-
+if(length(f)==3)
+    fn_S = strcat(path,f{1,3});
+end
 
 % =======================================DPnav Trj Measurement M
 
@@ -112,53 +113,58 @@ k_spa_P2_data_phase_NSA = mean(k_spa_P2_data_rm_phase_offset,3);
 
 %=======================================DPnav Trj Measurement S
 
-
-MR_TSEDPnav_S = MRecon(fn_S);
-
-MR_DPnavspiralS_recon1 = MR_TSEDPnav_S.Copy;
-MR_DPnavspiralS_recon1.Parameter.Parameter2Read.typ = 1;
-MR_DPnavspiralS_recon1.Parameter.Parameter2Read.mix = 1;
-
-MR_DPnavspiralS_recon1.ReadData;
-MR_DPnavspiralS_recon1.RandomPhaseCorrection;
-
-k_spa_S_data = double(MR_DPnavspiralS_recon1.Data);
-[kx, profiles] = size(k_spa_S_data);
-
-ch_nr = length(MR_DPnavspiralS_recon1.Parameter.Labels.CoilNrs);
-n_nsa = max(MR_DPnavspiralS_recon1.Parameter.Labels.Index.aver) + 1;
-n_dyn = max(MR_DPnavspiralS_recon1.Parameter.Labels.Index.dyn) + 1;
-shots_per_volumn = profiles / ch_nr / n_nsa / n_dyn;
-
-k_spa_S_data = reshape(k_spa_S_data,kx, ch_nr, n_nsa, shots_per_volumn, n_dyn);
-[kx, n_ch,  n_nsa, shots, diffusion_setting] = size(k_spa_S_data)
-
-k_spa_S_data_rm_phase_offset = k_spa_S_data(kx/2+1:end,:,:,:,:);
-k_spa_S1_data_rm_phase_offset = squeeze(k_spa_S_data_rm_phase_offset(:,:,1,:,:));
-k_spa_S2_data_rm_phase_offset = squeeze(k_spa_S_data_rm_phase_offset(:,:,2,:,:));
-k_spa_S2_data_rm_phase_offset = k_spa_S2_data_rm_phase_offset.* exp(i*pi);
-
-for diffusion_nr = 1:diffusion_setting
-    figure(300++diffusion_nr);
-    plot(squeeze(unwrap(angle(k_spa_S1_data_rm_phase_offset(:, 1,:,diffusion_nr))))); title('1 repeatition')
-    hold on
-    plot(2*pi+squeeze(unwrap(angle(k_spa_S2_data_rm_phase_offset(:, 1,:,diffusion_nr))))); title('1 repeatition')
-    title(['S phase diffusion nr = ',num2str(diffusion_nr)]);
-    hold off
-    drawnow();
-    pause(1);
+if(length(f)==3)
+    MR_TSEDPnav_S = MRecon(fn_S);
     
-    figure(304);
-    b0_phase = squeeze(unwrap(angle(k_spa_S2_data_rm_phase_offset(:,2,:,1))));
-    ec_phase = squeeze(unwrap(angle(k_spa_S2_data_rm_phase_offset(:,2,:,diffusion_nr))));
-    hold on;
-    plot(ec_phase - b0_phase);
-    drawnow();
-    pause(1);
+    MR_DPnavspiralS_recon1 = MR_TSEDPnav_S.Copy;
+    MR_DPnavspiralS_recon1.Parameter.Parameter2Read.typ = 1;
+    MR_DPnavspiralS_recon1.Parameter.Parameter2Read.mix = 1;
+    
+    MR_DPnavspiralS_recon1.ReadData;
+    MR_DPnavspiralS_recon1.RandomPhaseCorrection;
+    
+    k_spa_S_data = double(MR_DPnavspiralS_recon1.Data);
+    [kx, profiles] = size(k_spa_S_data);
+    
+    ch_nr = length(MR_DPnavspiralS_recon1.Parameter.Labels.CoilNrs);
+    n_nsa = max(MR_DPnavspiralS_recon1.Parameter.Labels.Index.aver) + 1;
+    n_dyn = max(MR_DPnavspiralS_recon1.Parameter.Labels.Index.dyn) + 1;
+    shots_per_volumn = profiles / ch_nr / n_nsa / n_dyn;
+    
+    k_spa_S_data = reshape(k_spa_S_data,kx, ch_nr, n_nsa, shots_per_volumn, n_dyn);
+    [kx, n_ch,  n_nsa, shots, diffusion_setting] = size(k_spa_S_data)
+    
+    k_spa_S_data_rm_phase_offset = k_spa_S_data(kx/2+1:end,:,:,:,:);
+    k_spa_S1_data_rm_phase_offset = squeeze(k_spa_S_data_rm_phase_offset(:,:,1,:,:));
+    k_spa_S2_data_rm_phase_offset = squeeze(k_spa_S_data_rm_phase_offset(:,:,2,:,:));
+    k_spa_S2_data_rm_phase_offset = k_spa_S2_data_rm_phase_offset.* exp(i*pi);
+    
+    for diffusion_nr = 1:diffusion_setting
+        figure(300++diffusion_nr);
+        plot(squeeze(unwrap(angle(k_spa_S1_data_rm_phase_offset(:, 1,:,diffusion_nr))))); title('1 repeatition')
+        hold on
+        plot(2*pi+squeeze(unwrap(angle(k_spa_S2_data_rm_phase_offset(:, 1,:,diffusion_nr))))); title('1 repeatition')
+        title(['S phase diffusion nr = ',num2str(diffusion_nr)]);
+        hold off
+        drawnow();
+        pause(1);
+        
+        figure(304);
+        b0_phase = squeeze(unwrap(angle(k_spa_S2_data_rm_phase_offset(:,2,:,1))));
+        ec_phase = squeeze(unwrap(angle(k_spa_S2_data_rm_phase_offset(:,2,:,diffusion_nr))));
+        hold on;
+        plot(ec_phase - b0_phase);
+        drawnow();
+        pause(1);
+    end
+    
+    k_spa_S1_data_phase_NSA = mean(k_spa_S1_data_rm_phase_offset,3);
+    k_spa_S2_data_phase_NSA = mean(k_spa_S2_data_rm_phase_offset,3);
+else %no S trajectory measure
+    k_spa_S1_data_phase_NSA = zeros(size(k_spa_M1_data_phase_NSA));
+    k_spa_S2_data_phase_NSA = zeros(size(k_spa_M2_data_phase_NSA));
+    
 end
-
-k_spa_S1_data_phase_NSA = mean(k_spa_S1_data_rm_phase_offset,3);
-k_spa_S2_data_phase_NSA = mean(k_spa_S2_data_rm_phase_offset,3);
 
 %% %----------Calculation----------------%
 im_M1_ksp = squeeze(k_spa_M1_data_phase_NSA);
