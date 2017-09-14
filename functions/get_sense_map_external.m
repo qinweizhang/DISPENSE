@@ -38,7 +38,7 @@ MR_sense.Extrapolate = 1;
 MR_sense.MatchTargetSize = 1;
 % match the size. not sure if this is the correct way to do so.???
 rs = 0;
-if(recon_dim(3) == 1) %at least 3 slices?
+if(0) %(recon_dim(3) == 1) %at least 3 slices? for some case this is not true?
     rs = 1;
     recon_dim(3) = 3;
 end

@@ -18,7 +18,11 @@ function image_corrected = msDWIrecon(kspa, sense_map, phase_error, pars)
 
 [ky_dim, kz_dim, nc, ns] = size(kspa);
 
-assert(length(size(sense_map)) == 3 && sum([ky_dim kz_dim nc]==size(sense_map)) ==  3); %sense_map size check
+if (nc==1)
+    assert(length(size(sense_map)) == 2 && sum([ky_dim kz_dim]==size(sense_map)) ==  2); %sense_map size check
+else
+    assert(length(size(sense_map)) == 3 && sum([ky_dim kz_dim nc]==size(sense_map)) ==  3); %sense_map size check
+end
 
 if(ns > 1)
     assert(length(size(phase_error)) == 4 && sum([ky_dim kz_dim 1 ns]==size(phase_error)) ==  4); %phase_error size check
@@ -28,12 +32,15 @@ end
 
 
 
+
 %% algorithms
 if strcmp(pars.method, 'CG_SENSE_I')
     %% IMAGE SPACE CG_SENSE
     
     %preprocessing
-    sense_map = squeeze(normalize_sense_map(permute(sense_map,[4 1 2 3]))); %normalized in 4th dimension
+    if(nc>1)
+        sense_map = permute((normalize_sense_map(permute(sense_map,[4 1 2 3]))),[2 3 4 1]); %normalized in 4th dimension; so permute and permute back
+    end
     phase_error = normalize_sense_map(phase_error); %miss use normalized_sense_map function to normalized phase_error map
     mask = abs(kspa) > 0;
     b = col(kspa);

@@ -1,9 +1,9 @@
 
-clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_13_SoSAD_phantom_pormelo');
+clear; clc; close all
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_09_13_SND_brain')
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_Sc25_26_27_for_Sc14.mat';
+trj_save_fn = 'traj_for_Sc3.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sa_13082017_2011072_17_2_wip_sc17_dpsti_sosad_linearV4.raw';
-sense_ref_fn = 'sa_13082017_1957331_1000_34_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sa_13082017_1956371_1000_29_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_13092017_1247245_8_2_wip_sc27_dpsti_sosad_linearV4.raw';
+sense_ref_fn = 'sn_13092017_1217451_1000_7_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_13092017_1212557_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_Sc25_26_27_for_Sc17.mat';
+trj_mat_fn = 'traj_for_Sc8.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -29,14 +29,15 @@ close all;
 
 nav_im_recon_nufft = [];
 for dyn = 1:dyn_nr
+    dyn
     %=============== recon parameters =========================
     recon_par.ignore_kz = 1;
-    recon_par.recon_dim  = [36 36 1];
+    recon_par.recon_dim  = [50 50 1];
     recon_par.dyn_nr = dyn;
-    recon_par.skip_point = 0 ;
-    recon_par.end_point = 1800;%[]; %or []: till the end;
+    recon_par.skip_point = 2 ;
+    recon_par.end_point = []; %or []: till the end;
     recon_par.interations = 10;
-    recon_par.lamda = 0.1;
+    recon_par.lamda = 0.5;
     recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon = 1;
     recon_par.update_SENSE_map = 0;
@@ -64,6 +65,8 @@ for dyn = 1:dyn_nr
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
+figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft)),[-pi pi]); colormap jet; 
+figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft)),[]); 
 
 disp('-finished- ');
 %% -----BART recon -------%
@@ -98,22 +101,27 @@ save(data_fn, 'reco_pics','igrid','igrid_rss','-append');
 close all; clc
 disp(' TSE data sorting and default recon...')
 
+parameter2read.dyn = [];
+
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange] = ...
-    TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn);
+    TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn,parameter2read);
 
+TSE
 
-figure(606); immontage4D(permute(abs(ima_default_recon(80:240,:,:,:)),[1 2 4 3]), [10 1000]);
+figure(606); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [10 500]);
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
 nav_data = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
 
-TSE.kxrange = [-320 -1];
+TSE.kxrange = [-256 -1]; %consider now the ima_k_spa_data is oversampled in kx
+TSE.kyrange = [-128 -1]; %consider now the ima_k_spa_data is oversampled in kx
+
 TSE.dyn_dim = dyn_nr;
 TSE_sense_map = []; %calc again using get_sense_map_external
 
 %parameters for DPsti_TSE_phase_error_cor
-pars.sense_map = 'external';  % external or ecalib
+pars.sense_map = 'ecalib';  % external or ecalib
 
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
@@ -121,8 +129,8 @@ pars.coil_survey = coil_survey_fn;
 
 pars.enabled_ch = [1];
 pars.b0_shots = []; %[] means first dynamic
-pars.nonb0_shots = 28:54;
-pars.recon_x_locs = 120:220;
+pars.nonb0_shots = 9:16;
+pars.recon_x_locs = 1:160;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;

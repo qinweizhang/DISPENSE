@@ -59,27 +59,30 @@ used_profile_nr = 0;
 for prof_idx = 1:size(ima_k_spa_data, 2)
     ky_idx = TSE.ky_matched(prof_idx) + floor(ky_dim/2)+1;
     kz_idx = TSE.kz_matched(prof_idx) + floor(kz_dim/2)+1;
-    ch_nr = mod(prof_idx, TSE.ch_dim) + 1;
-    ch_idx = find(pars.enabled_ch==ch_nr);
-    sh_nr = TSE.shot_matched(prof_idx);
-    sh_idx = find([b0_shots_range nonb0_shots_range]==sh_nr);
-    if(~isempty(ch_idx)&&~isempty(sh_idx))
+    ch_order = mod(prof_idx, ch_dim) + 1;
+    ch_idx = find(pars.enabled_ch==ch_order);
+    sh_order = TSE.shot_matched(prof_idx);
+    sh_idx = find([b0_shots_range nonb0_shots_range]==sh_order);
+    if(ch_idx*sh_idx>0)
         used_profile_nr = used_profile_nr+1;
         kspa_all(:,ky_idx,kz_idx,ch_idx, sh_idx) = ima_k_spa_data(:,prof_idx);
     end
 end
 
-temp = kspa_all(round(kx_dim/2),:,:,:,:);
-assert(used_profile_nr == sum(abs(temp(:))>0)); clear temp
+assert(used_profile_nr == sum(abs(kspa_all(:))>0))
 size(kspa_all)
 
 
 % remove stupid checkerboard pattern
 che=create_checkerboard([1,size(kspa_all,2),size(kspa_all,3)]);
 kspa_all=bsxfun(@times,kspa_all,che);
+if(size(kspa_all,3)==1) %2D data set
+else
+    kspa_all=squeeze(kspa_all);
+end
 
-
-kspa_b0 = sum(kspa_all(:,:,:,:,[1:length(b0_shots_range)]), 5); %4D b0 kspace [kx ky kz nc]
+b0_shots_range_idx = find([b0_shots_range nonb0_shots_range],b0_shots_range);
+kspa_b0 = sum(kspa_all(:,:,:,:,b0_shots_range_idx), 5); %4D b0 kspace [kx ky kz nc]
 
 pp=bart('fft -i 7',kspa_b0);
 im_b0=bart('rss 8',pp);
@@ -126,7 +129,8 @@ else
     elseif(strcmp(pars.sense_map, 'external'))
         if(isempty(TSE_sense_map))
             dim = [size(kspa_b0, 2) size(kspa_b0, 2) size(kspa_b0,3)];
-            os = [1, 1, 1];
+            os =% correction_shots_range = [shots_per_dyn+1: 2*shots_per_dyn];
+ [1, 1, 1];
             TSE_sense_map = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
             rs_command = sprintf('resize -c 0 %d', size(kspa_b0, 1));
             TSE_sense_map = bart(rs_command, TSE_sense_map);
@@ -142,7 +146,7 @@ toc
 disp('Preprocessing on kspace data for nonb0');
 
 tic
-kspa_xyz = kspa_all(:,:,:,:,(length(b0_shots_range)+1):end);
+kspa_xyz = kspa_all(:,:,:,:,nonb0_shots_range);
 
 kk = sum(kspa_xyz, 5); %4D b0 kspace [kx ky kz nc]
 pp=bart('fft -i 7',kk);
@@ -200,14 +204,14 @@ image_corrected = zeros(kx, ky, kz);
 tic;
 if (kz>1)
     %% 3D recon
-    recon_x = [100: 220]; %pars.recon_x_locs;
+    recon_x = [80: 160]; %pars.recon_x_locs;
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);
         
         %=========select data. fixed=============================================
-        kspa = permute(kspa_x_yz(recon_x_loc, :, :, :, :),[2 3 4 5 1]);
-        sense_map = permute(sense_map_3D(recon_x_loc,:,:,:),[2 3 4 1]);
+        kspa = permute(kspa_x_yz(recon_x_loc, :, :, :, :),[2 3 4 1]);
+        sense_map = permute(squeeze(sense_map_3D(recon_x_loc,:,:,:)),[2 3 4 1]);
         phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
         %========================================================================
         
@@ -226,7 +230,7 @@ if (kz>1)
     toc;
     
     %display
-    figure(109);
+    figure(108);
     subplot(131); montage(permute(abs(im_b0(:,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
     subplot(132); montage(permute(abs(im_nonb0(:,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
     subplot(133); montage(permute(abs(image_corrected(:,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');

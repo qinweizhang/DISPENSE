@@ -6,6 +6,7 @@
 
     MR_TSEDPima_data_recon1.Parameter.Parameter2Read.typ = 1;
     MR_TSEDPima_data_recon1.Parameter.Parameter2Read.mix = 0;  %for DPnav Spirals
+    MR_TSEDPima_data_recon1.Parameter.Parameter2Read.dyn = 0; 
     MR_TSEDPima_data_recon1.ReadData;
     MR_TSEDPima_data_recon1.RandomPhaseCorrection;
     MR_TSEDPima_data_recon1.RemoveOversampling;
@@ -13,12 +14,12 @@
     MR_TSEDPima_data_recon1.DcOffsetCorrection;
     MR_TSEDPima_data_recon1.MeasPhaseCorrection;
     MR_TSEDPima_data_recon1.SortData;
-    kspa_sorted = double(squeeze(MR_TSEDPima_data_recon1.Data));
+%     kspa_sorted = double(squeeze(MR_TSEDPima_data_recon1.Data));
+    kspa_sorted = double(MR_TSEDPima_data_recon1.Data(:,:,:,:,1,1,1,1,1,1,1,1,1,1,1));
     
     che=create_checkerboard([1,size(kspa_sorted,2),size(kspa_sorted,3)]);
     kspa_sorted=bsxfun(@times,kspa_sorted,che);
 
-    kspa_sorted = kspa_sorted(:,:,:,:,1);
     bart_command_1 = sprintf('resize -c 0 %d 1 %d 2 %d',recon_dim(1),recon_dim(2),recon_dim(3) )
     kspa_TSE_resize = bart(bart_command_1, kspa_sorted);
     
@@ -34,9 +35,9 @@
 %     cirshift_pix = offset./(FOV/recon_size);
     %
     
-    sens=bart('ecalib -m1 -S',kspa_TSE_resize);
+    sens=bart('ecalib -m1  -c0.1',kspa_TSE_resize);
     sens_map =  sens;
     figure(701);  montage(permute(squeeze(abs(sens_map(:,:,:,1))),[1 2 4 3]), 'displayrange',[]); title('sense maps: all slices, 1 channel ')
-    figure(702);  immontage4D(sens_map,[0 1]); xlabel( 'channels'); ylabel('slice'); title('all sense maps')
+    figure(702);  immontage4D(abs(sens_map),[]); xlabel( 'channels'); ylabel('slice'); title('all sense maps')
         
  end

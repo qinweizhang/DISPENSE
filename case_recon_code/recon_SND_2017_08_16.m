@@ -1,6 +1,6 @@
 
 clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_13_SoSAD_phantom_pormelo');
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_15_SND_signal_evaluation');
 %% trajectory calculation
 close all; clear; clc;
 trj_save_fn = 'traj_Sc25_26_27_for_Sc14.mat';
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sa_13082017_2011072_17_2_wip_sc17_dpsti_sosad_linearV4.raw';
-sense_ref_fn = 'sa_13082017_1957331_1000_34_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sa_13082017_1956371_1000_29_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_15082017_1958263_27_2_wip_sc18_dpsti_sosad_linearV4.raw';
+sense_ref_fn = 'sn_15082017_2006058_1000_47_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_15082017_2004480_1000_40_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_Sc25_26_27_for_Sc17.mat';
+trj_mat_fn = 'traj_for_Sc27.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -34,7 +34,7 @@ for dyn = 1:dyn_nr
     recon_par.recon_dim  = [36 36 1];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
-    recon_par.end_point = 1800;%[]; %or []: till the end;
+    recon_par.end_point = 1900;%[]; %or []: till the end;
     recon_par.interations = 10;
     recon_par.lamda = 0.1;
     recon_par.recon_all_shot = 1;
@@ -102,7 +102,7 @@ disp(' TSE data sorting and default recon...')
     TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn);
 
 
-figure(606); immontage4D(permute(abs(ima_default_recon(80:240,:,:,:)),[1 2 4 3]), [10 1000]);
+figure(606); immontage4D(permute(abs(ima_default_recon(:,80:240,:,:)),[1 2 4 3]), [120 1000]);
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
@@ -113,15 +113,15 @@ TSE.dyn_dim = dyn_nr;
 TSE_sense_map = []; %calc again using get_sense_map_external
 
 %parameters for DPsti_TSE_phase_error_cor
-pars.sense_map = 'external';  % external or ecalib
+pars.sense_map = 'ecalib';  % external or ecalib
 
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 
-pars.enabled_ch = [1];
+pars.enabled_ch = 1:13;
 pars.b0_shots = []; %[] means first dynamic
-pars.nonb0_shots = 28:54;
+pars.nonb0_shots = 17:32;
 pars.recon_x_locs = 120:220;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
