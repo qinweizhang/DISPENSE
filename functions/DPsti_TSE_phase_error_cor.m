@@ -91,15 +91,28 @@ toc;
 disp('Preprocessing on sense data');
 tic
 
-%sense mask
-dim = [size(kspa_b0, 2) size(kspa_b0, 2) size(kspa_b0,3)];
-os = [1, 1, 1];
-sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
-rs_command = sprintf('resize -c 0 %d', size(kspa_b0, 1));
-sense_map_temp = bart(rs_command, sense_map_temp);
-
-sense_mask = abs(sense_map_temp(:,:,:,1 ))>0;
-clear sense_map_temp;    
+% %sense mask || now it should be calculated outside and stored in TSE structure
+if(isfield(TSE, 'sense_mask'))
+    if(isempty(TSE.sense_mask)) %if empty calc again
+        dim = [size(kspa_b0, 2) size(kspa_b0, 2) size(kspa_b0,3)];
+        os = [1, 1, 1];
+        sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
+        rs_command = sprintf('resize -c 0 %d', size(kspa_b0, 1));
+        sense_map_temp = bart(rs_command, sense_map_temp);
+        
+        TSE.sense_mask = abs(sense_map_temp(:,:,:,1 ))>0;
+        clear sense_map_temp;
+    end
+else %if not exist, calc again
+    dim = [size(kspa_b0, 2) size(kspa_b0, 2) size(kspa_b0,3)];
+    os = [1, 1, 1];
+    sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
+    rs_command = sprintf('resize -c 0 %d', size(kspa_b0, 1));
+    sense_map_temp = bart(rs_command, sense_map_temp);
+    
+    TSE.sense_mask = abs(sense_map_temp(:,:,:,1 ))>0;
+    clear sense_map_temp;
+end
 
 %sense maps
 if(length(pars.enabled_ch)==1) %one channel
@@ -111,7 +124,7 @@ else
     
     if(strcmp(pars.sense_map, 'ecalib'))
         
-        ecalib_sense_map_3D = bart('ecalib -S -m1 -c0.1', kspa_b0);
+        ecalib_sense_map_3D = bart('ecalib -S -m1 -c0.2', kspa_b0);
         figure(3);
         displayslice = round(size(ecalib_sense_map_3D, 3)/2);
         subplot(211);montage(angle(ecalib_sense_map_3D(:,:,displayslice,:)),'displayrange',[-pi pi]); title('ecalib sense map (phase)')
@@ -186,7 +199,7 @@ end
 phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the ref
 phase_error_3D = normalize_sense_map(phase_error_3D); %miss use normalize_sense_map
 % phase_error_3D = conj(bsxfun(@times, phase_error_3D, abs(sense_map_3D(:,:,:,1))>eps)) + eps; %mask the outer region
-phase_error_3D = conj(bsxfun(@times, phase_error_3D, sense_mask));  %conj or not???
+phase_error_3D = conj(bsxfun(@times, phase_error_3D, TSE.sense_mask));  %conj or not???
 
 figure(5);
 immontage4D(angle(phase_error_3D),[-pi pi]); colormap jet; title('phase error maps int.')
@@ -227,19 +240,21 @@ if (kz>1)
     
     %display
     figure(109);
-    subplot(131); montage(permute(abs(im_b0(:,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
-    subplot(132); montage(permute(abs(im_nonb0(:,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
-    subplot(133); montage(permute(abs(image_corrected(:,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
+    subplot(141); montage(permute(abs(im_b0(:,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
+    subplot(142); montage(permute(abs(im_nonb0(:,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
+    subplot(143); montage(permute(abs(image_corrected(:,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
 else
     %% 2D recon: remove 3rd dimension
     
-    image_corrected = msDWIrecon(permute(kspa_xyz,[1 2 4 5 3]), sense_map_3D, phase_error_3D, pars.msDWIrecon);
-    
+        image_corrected = msDWIrecon(permute(kspa_xyz,[1 2 4 5 3]), squeeze(sense_map_3D), phase_error_3D, pars.msDWIrecon);
+%     image_corrected = msDWIrecon(permute(kspa_all(:,:,:,:,[1:length(b0_shots_range)]),[1 2 4 5 3]), squeeze(sense_map_3D), phase_error_3D, pars.msDWIrecon);
     %display
-    figure(116);
-    subplot(131); imshow(abs(im_b0),[]); title('b0');
-    subplot(132);  imshow(abs(im_nonb0),[]); title('b0'); title('direct recon');
-    subplot(133);  imshow(abs(image_corrected),[]); title('b0'); title('msDWIrecon');
+    figure(110);
+    subplot(141); imshow(abs(im_b0),[]); title('b0');
+    subplot(142);  imshow(abs(im_nonb0),[]); title('b0'); title('direct recon');
+    subplot(144);  imshow(abs(image_corrected),[]); title('b0'); title('msDWIrecon');
+    
+    
     
 end
 

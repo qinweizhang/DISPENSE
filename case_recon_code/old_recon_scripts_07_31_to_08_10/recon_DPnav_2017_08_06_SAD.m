@@ -3,7 +3,7 @@ clear;clc; close all;
 cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_06_SoSAD_phyliss');
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj2_Sc30_31_32_for_Sc6.mat';
+trj_save_fn = 'traj2_Sc29_27_28_for_Sc4.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 
@@ -18,9 +18,11 @@ nav_kspa_data_read(fn, save_fn);
 
 
 %% NUFFT recon. 
+
+
 clear; close all; clc;
 
-data_fn = 'data_Sc05_3D.mat';
+data_fn = 'data_Sc04_3D.mat';
 trj_fn = 'traj2_Sc29_27_28_for_Sc4.mat'; 
 
 %=============== recon parameters =========================
@@ -31,15 +33,23 @@ recon_par.dyn_nr = 2;
 recon_par.skip_point = 0;
 recon_par.end_point = 2000; %[]; %or []: till the end; 
 recon_par.interations = 20;
+recon_par.lamda = 0.1;
 recon_par.sense_map_recon = 1;
 recon_par.update_SENSE_map = 0;
 recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
-recon_par.data_fn = 'dp_07082017_1922217_3_2_wip_sc4_dpsti_sosad_linear-ppuV4.raw';
-recon_par.sense_ref = 'dp_07082017_1921492_1000_7_wip_senserefscanV4.raw';
-recon_par.coil_survey = 'dp_07082017_1914359_1000_2_wip_coilsurveyscanV4.raw';
+recon_par.data_fn = 'dp_06082017_1312115_4_2_wip_sc6_dpsti_sosad_linear-ppuV4.raw';
+recon_par.sense_ref = 'dp_06082017_1311336_1000_10_wip_senserefscanV4.raw';
+recon_par.coil_survey = 'dp_06082017_1308028_1000_5_wip_coilsurveyscanV4.raw';
 %========================  END  =========================
 
-nav_im_recon_nufft = NUFFT_3D_recon(data_fn,trj_fn,recon_par);
+% Spiral Nav. data loading
+disp('spiral Nav. data loading...')
+nav_k_spa_data = nav_kspa_data_read(recon_par.data_fn);
+
+nav_sense_map = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
+nav_sense_map = normalize_sense_map(nav_sense_map);
+
+nav_im_recon_nufft = NUFFT_3D_recon(nav_k_spa_data,trj_fn,recon_par, nav_sense_map);
 save(data_fn, 'nav_im_recon_nufft','-append');
 
 %% -----BART recon -------%

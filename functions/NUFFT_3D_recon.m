@@ -1,4 +1,4 @@
-function nav_im_recon_nufft = NUFFT_3D_recon(nav_k_spa_data,trj_fn,recon_par,nav_sens_map)
+function nav_im_recon_nufft = NUFFT_3D_recon(nav_k_spa_data,trj_fn,recon_par,nav_sense_map)
 
 %OUTPUT
 %
@@ -74,7 +74,7 @@ for shot_nr = 1: end_shot_idx
         sig_nufft = col(double(sig_kspa));
         
 %         nav_sens_map = conj(nav_sens_map);
-        A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sens_map,6);
+        A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sense_map,6);
         
         % simple inverse
         nav_im_recon_nufft_direct_inverse = A'*sig_nufft;
@@ -84,7 +84,7 @@ for shot_nr = 1: end_shot_idx
         
         %call CG-SENSE with L2-norm regularization
         nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,@L2Norm,recon_par.lamda,'maxit',recon_par.interations,'tol', 1e-10);
-        %         nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
+%                 nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
         
     else %ch by ch recon
         

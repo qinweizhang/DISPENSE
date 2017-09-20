@@ -28,17 +28,17 @@ close all;
 [kx_length ch_nr shot_nr dyn_nr] = size(nav_k_spa_data);
 
 nav_im_recon_nufft = [];
-for dyn = 1:dyn_nr
+for dyn = 1:1
     %=============== recon parameters =========================
     recon_par.ignore_kz = 1;
     recon_par.recon_dim  = [36 36 1];
     recon_par.dyn_nr = dyn;
-    recon_par.skip_point = 0 ;
+    recon_par.skip_point = 5 ;
     recon_par.end_point = 1900;%[]; %or []: till the end;
     recon_par.interations = 10;
     recon_par.lamda = 0.1;
-    recon_par.recon_all_shot = 1;
-    recon_par.sense_map_recon = 1;
+    recon_par.recon_all_shot = 0;
+    recon_par.sense_map_recon = 0;
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
     recon_par.data_fn = data_fn;

@@ -24,12 +24,12 @@ MR_DPnavspiralM_recon1.RandomPhaseCorrection;
 k_spa_M_data = double(MR_DPnavspiralM_recon1.Data);
 [kx, profiles] = size(k_spa_M_data);
 
-ch_nr = length(MR_DPnavspiralM_recon1.Parameter.Labels.CoilNrs);
+ch_nr_m = length(MR_DPnavspiralM_recon1.Parameter.Labels.CoilNrs);
 n_nsa = max(MR_DPnavspiralM_recon1.Parameter.Labels.Index.aver) + 1;
 n_dyn = max(MR_DPnavspiralM_recon1.Parameter.Labels.Index.dyn) + 1;
-shots_per_volumn = profiles / ch_nr / n_nsa / n_dyn;
+shots_per_volumn = profiles / ch_nr_m / n_nsa / n_dyn;
 
-k_spa_M_data = reshape(k_spa_M_data,kx, ch_nr, n_nsa, shots_per_volumn, n_dyn);
+k_spa_M_data = reshape(k_spa_M_data,kx, ch_nr_m, n_nsa, shots_per_volumn, n_dyn);
 [kx, n_ch,  n_nsa, shots, diffusion_setting] = size(k_spa_M_data)
 
 k_spa_M_data_rm_phase_offset = k_spa_M_data(kx/2+1:end,:,:,:,:);
@@ -75,12 +75,12 @@ MR_DPnavspiralP_recon1.RandomPhaseCorrection;
 k_spa_P_data = double(MR_DPnavspiralP_recon1.Data);
 [kx, profiles] = size(k_spa_P_data);
 
-ch_nr = length(MR_DPnavspiralP_recon1.Parameter.Labels.CoilNrs);
+ch_nr_p = length(MR_DPnavspiralP_recon1.Parameter.Labels.CoilNrs);
 n_nsa = max(MR_DPnavspiralP_recon1.Parameter.Labels.Index.aver) + 1;
 n_dyn = max(MR_DPnavspiralP_recon1.Parameter.Labels.Index.dyn) + 1;
-shots_per_volumn = profiles / ch_nr / n_nsa / n_dyn;
+shots_per_volumn = profiles / ch_nr_p / n_nsa / n_dyn;
 
-k_spa_P_data = reshape(k_spa_P_data,kx, ch_nr, n_nsa, shots_per_volumn, n_dyn);
+k_spa_P_data = reshape(k_spa_P_data,kx, ch_nr_p, n_nsa, shots_per_volumn, n_dyn);
 [kx, n_ch,  n_nsa, shots, diffusion_setting] = size(k_spa_P_data)
 
 k_spa_P_data_rm_phase_offset = k_spa_P_data(kx/2+1:end,:,:,:,:);
@@ -126,12 +126,12 @@ if(length(f)==3)
     k_spa_S_data = double(MR_DPnavspiralS_recon1.Data);
     [kx, profiles] = size(k_spa_S_data);
     
-    ch_nr = length(MR_DPnavspiralS_recon1.Parameter.Labels.CoilNrs);
+    ch_nr_s = length(MR_DPnavspiralS_recon1.Parameter.Labels.CoilNrs);
     n_nsa = max(MR_DPnavspiralS_recon1.Parameter.Labels.Index.aver) + 1;
     n_dyn = max(MR_DPnavspiralS_recon1.Parameter.Labels.Index.dyn) + 1;
-    shots_per_volumn = profiles / ch_nr / n_nsa / n_dyn;
+    shots_per_volumn = profiles / ch_nr_s / n_nsa / n_dyn;
     
-    k_spa_S_data = reshape(k_spa_S_data,kx, ch_nr, n_nsa, shots_per_volumn, n_dyn);
+    k_spa_S_data = reshape(k_spa_S_data,kx, ch_nr_s, n_nsa, shots_per_volumn, n_dyn);
     [kx, n_ch,  n_nsa, shots, diffusion_setting] = size(k_spa_S_data)
     
     k_spa_S_data_rm_phase_offset = k_spa_S_data(kx/2+1:end,:,:,:,:);
@@ -163,6 +163,7 @@ if(length(f)==3)
 else %no S trajectory measure
     k_spa_S1_data_phase_NSA = zeros(size(k_spa_M1_data_phase_NSA));
     k_spa_S2_data_phase_NSA = zeros(size(k_spa_M2_data_phase_NSA));
+    ch_nr_s = ch_nr_m;
     
 end
 
@@ -176,19 +177,19 @@ im_S2_ksp = squeeze(k_spa_S2_data_phase_NSA);
 
 clear im_M1_ksp_phase_unwrap im_M2_ksp_phase_unwrap im_P1_ksp_phase_unwrap im_P2_ksp_phase_unwrap im_S1_ksp_phase_unwrap im_S2_ksp_phase_unwrap
 
-sel_ch = [1:ch_nr];
+sel_ch = [1:ch_nr_m];
 for ch=1:length(sel_ch)
     im_M1_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_M1_ksp(:,sel_ch(ch),:))));
     im_M2_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_M2_ksp(:,sel_ch(ch),:))));
 end
 
-sel_ch = [1:ch_nr];
+sel_ch = [1:ch_nr_p];
 for ch=1:length(sel_ch)
     im_P1_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_P1_ksp(:,sel_ch(ch),:))));
     im_P2_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_P2_ksp(:,sel_ch(ch),:))));
 end
 
-sel_ch = [1:ch_nr];
+sel_ch = [1:ch_nr_s];
 for ch=1:length(sel_ch)
     im_S1_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_S1_ksp(:,sel_ch(ch),:))));
     im_S2_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_S2_ksp(:,sel_ch(ch),:))));
