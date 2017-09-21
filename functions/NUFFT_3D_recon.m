@@ -36,11 +36,13 @@ trj_meas_kz = trj_meas_kz_t';
 
 clear trj_meas_kx_t trj_meas_ky_t trj_meas_kz_t sig_bart_t
 
-scale_foctor_xy = max(2*pi/(max(trj_meas_kx)-min(trj_meas_kx)),2*pi/(max(trj_meas_ky)-min(trj_meas_ky)));
+recon_scale_factor = recon_par.recon_dim./ recon_par.acq_dim;
+
+scale_foctor_xy = max(2*pi/(max(trj_meas_kx)-min(trj_meas_kx))./recon_scale_factor(1),2*pi/(max(trj_meas_ky)-min(trj_meas_ky))./recon_scale_factor(2));
 trj_meas_kx_scaled = trj_meas_kx * scale_foctor_xy;
 trj_meas_ky_scaled = trj_meas_ky * scale_foctor_xy;
 
-scale_foctor_z = 2*pi/(max(trj_meas_kz)-min(trj_meas_kz));
+scale_foctor_z = 2*pi/(max(trj_meas_kz)-min(trj_meas_kz))./recon_scale_factor(3);
 
 if(recon_par.ignore_kz == 1)
     scale_foctor_z = 0;
@@ -70,7 +72,7 @@ for shot_nr = 1: end_shot_idx
     
     sig_kspa = nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr);
     
-    if(1) %(recon_par.sense_map_recon) %all in one recon
+    if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
         sig_nufft = col(double(sig_kspa));
         
 %         nav_sens_map = conj(nav_sens_map);
@@ -88,10 +90,12 @@ for shot_nr = 1: end_shot_idx
         
     else %ch by ch recon
         
+        disp('recon ch by ch!')
+        
         for ch =1:size(nav_k_spa_data,2)
             sig_nufft = double(sig_kspa(:, ch));
             sig_nufft = sig_nufft';
-            A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sens_map,6);
+            A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sense_map(:,:,:,ch),6);
             
             % simple inverse
             %                 nav_im_recon_nufft(:,:,:,ch) = A'*sig_nufft';

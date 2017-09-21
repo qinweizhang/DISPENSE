@@ -24,6 +24,7 @@ profiles_per_dyn = size(ima_k_spa_data,2)/TSE.dyn_dim;
 assert(round(profiles_per_dyn) == profiles_per_dyn);
 shots_per_dyn = max_shot/TSE.dyn_dim;
 assert(round(shots_per_dyn) == shots_per_dyn);
+assert(max(pars.enabled_ch)<=TSE.ch_dim&&min(pars.enabled_ch)>0);
 %% Preprocessing on kspace data for b=0
 disp('Preprocessing on kspace data for b=0');
 if(isempty(pars.b0_shots))
@@ -81,10 +82,9 @@ kspa_all=bsxfun(@times,kspa_all,che);
 
 kspa_b0 = sum(kspa_all(:,:,:,:,[1:length(b0_shots_range)]), 5); %4D b0 kspace [kx ky kz nc]
 
-pp=bart('fft -i 7',kspa_b0);
-im_b0=bart('rss 8',pp);
+im_b0_ch_by_ch=bart('fft -i 7',kspa_b0);
+im_b0=bart('rss 8',im_b0_ch_by_ch);
 figure(1); montage(permute(abs(im_b0),[1 2 4 3]),'displayrange',[]); title('b0 images');
-clear pp
 toc;
 
 %% Preprocessing on sense data
@@ -149,6 +149,12 @@ else
         error('sense map source not indentified.')
     end
 end
+
+if(exist('nav_sense_map','var')&&exist('im_b0_ch_by_ch','var'))
+    figure(21); 
+    subplot(121); montage(abs(im_b0_ch_by_ch),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
+    subplot(122); montage(abs(sense_map_3D),'displayrange',[]); xlabel('sense');
+end
 toc
 
 %% Preprocessing on kspace data for nonb0
@@ -158,8 +164,8 @@ tic
 kspa_xyz = kspa_all(:,:,:,:,(length(b0_shots_range)+1):end);
 
 kk = sum(kspa_xyz, 5); %4D b0 kspace [kx ky kz nc]
-pp=bart('fft -i 7',kk);
-im_nonb0=bart('rss 8',pp);
+im_b0_ch_by_ch=bart('fft -i 7',kk);
+im_nonb0=bart('rss 8',im_b0_ch_by_ch);
 figure(2); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
 clear kk pp
 
@@ -252,7 +258,7 @@ else
     figure(110);
     subplot(141); imshow(abs(im_b0),[]); title('b0');
     subplot(142);  imshow(abs(im_nonb0),[]); title('b0'); title('direct recon');
-    subplot(144);  imshow(abs(image_corrected),[]); title('b0'); title('msDWIrecon');
+    subplot(143);  imshow(abs(image_corrected),[]); title('b0'); title('msDWIrecon');
     
     
     

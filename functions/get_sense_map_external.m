@@ -49,7 +49,23 @@ end
 
 MR_sense.Perform;
 
-sens_map = double(MR_sense.Sensitivity);
+sens_map_default_sorting = double(MR_sense.Sensitivity);
+sens_map_no_sorting = sens_map_default_sorting .* 0;
+ch_order = r.Parameter.Labels.CoilNrs(:,1); %targeting sorting order. 
+sorted_order = sort(ch_order);  %current sorting order
+for c =1:length(ch_order)
+    ch_nr = sorted_order(c);
+    permute_oder = find(ch_order==ch_nr);
+    sens_map_no_sorting(:,:,:,permute_oder) = sens_map_default_sorting(:,:,:,c);
+end
+
+sens_map = sens_map_no_sorting;
+ch_order'
+str = sprintf('Kerry: Self sense calculation sort channel dimention based on the natural channel order in list file/chan_labels/Parameter.Labels.CoilNrs. \n\t\ti.e. The channel label value is not considered. \n\t\t Should do the same for the data!');
+warning(str);
+
+% sens_map = sens_map_default_sorting;
+
 if(rs == 1)
     sens_map = sens_map(:,:,2,:);
 end

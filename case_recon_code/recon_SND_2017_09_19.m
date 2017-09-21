@@ -25,26 +25,30 @@ disp('-finished- ');
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
 close all;
-[kx_length ch_nr shot_nr dyn_nr] = size(nav_k_spa_data);
+[kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 nav_im_recon_nufft = [];
 for dyn = 1:dyn_nr
     dyn
     %=============== recon parameters =========================
     recon_par.ignore_kz = 1;
-    recon_par.recon_dim  = [36 36 1];
+    recon_par.acq_dim = [36 36 1];  
+    recon_par.recon_dim  = [176 176 1];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = 1926;%[]; %or []: till the end;
     recon_par.interations = 10;
     recon_par.lamda = 1;
     recon_par.recon_all_shot = 1;
-    recon_par.sense_map_recon =1;
+    recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
     recon_par.data_fn = data_fn;
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
+    
+    recon_par.channel_by_channel = 1;
+    recon_par.channel_by_channel = recon_par.channel_by_channel .* (1-recon_par.sense_map_recon );
     %========================  END  =========================
      if(~exist('nav_sense_map', 'var')&&recon_par.sense_map_recon)
         recon_par.update_SENSE_map = 1;
@@ -69,6 +73,18 @@ figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft)),[-pi pi]); colormap 
 figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft)),[]); 
 phase_diff = angle(squeeze(bsxfun(@times,  nav_im_recon_nufft, exp(-1i*angle(nav_im_recon_nufft(:,:,:,1,1,:))))));
 figure(803); immontage4D(squeeze(phase_diff),[-pi pi]); colormap jet;
+
+if(recon_par.channel_by_channel)
+    nav_im_ch_by_ch = nav_im_recon_nufft_1dyn;
+end
+
+if(exist('nav_sense_map','var')&&exist('nav_im_ch_by_ch','var'))
+    figure(804); 
+    
+    subplot(121); montage(abs(nav_im_ch_by_ch),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
+    subplot(122); montage(abs(nav_sense_map),'displayrange',[]); xlabel('sense');
+end
+
 
 disp('-finished- ');
 %% -----BART recon -------%
@@ -132,7 +148,7 @@ pars.coil_survey = coil_survey_fn;
 
 pars.enabled_ch = 1:30;
 pars.b0_shots = 22:28; %[] means first dynamic
-pars.nonb0_shots = 1:7;
+pars.nonb0_shots = 8:14;
 pars.recon_x_locs = 1:160;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
