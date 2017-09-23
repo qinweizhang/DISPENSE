@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_19092017_1741167_2_2_wipsc4dpstisosadlinearppuV4.raw';
+data_fn = 'sn_19092017_1756429_6_2_wipsc4dpstisosadlinearppuV4.raw';
 sense_ref_fn = 'sn_19092017_1740214_1000_5_wipsenserefscanV4.raw';
 coil_survey_fn  = 'sn_19092017_1734568_1000_2_wipcoilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc2.mat';
+trj_mat_fn = 'traj_for_Sc6.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -28,16 +28,16 @@ close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 nav_im_recon_nufft = [];
-for dyn = 1:dyn_nr
+for dyn = 1:dyn_nr 
     dyn
     %=============== recon parameters =========================
-    recon_par.ignore_kz = 1;
-    recon_par.acq_dim = [36 36 1];  
-    recon_par.recon_dim  = [176 176 1];
+    recon_par.ignore_kz = 0;
+    recon_par.acq_dim = [26 26 9];  
+    recon_par.recon_dim  = [26 26 9];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
-    recon_par.end_point = 1926;%[]; %or []: till the end;
-    recon_par.interations = 10;
+    recon_par.end_point = []; %or []: till the end;
+    recon_par.interations = 3;
     recon_par.lamda = 1;
     recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon =1; 
@@ -69,10 +69,10 @@ for dyn = 1:dyn_nr
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
-figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft)),[-pi pi]); colormap jet; 
-figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft)),[]); 
+figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft(:,:,:,:,:,2))),[-pi pi]); colormap jet; 
+figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft(:,:,:,:,:,2))),[]); 
 phase_diff = angle(squeeze(bsxfun(@times,  nav_im_recon_nufft, exp(-1i*angle(nav_im_recon_nufft(:,:,:,1,1,:))))));
-figure(803); immontage4D(squeeze(phase_diff),[-pi pi]); colormap jet;
+figure(803); immontage4D(squeeze(phase_diff(:,:,:,:,2)),[-pi pi]); colormap jet;
 
 if(recon_par.channel_by_channel)
     nav_im_ch_by_ch = nav_im_recon_nufft_1dyn;
@@ -80,9 +80,10 @@ end
 
 if(exist('nav_sense_map','var')&&exist('nav_im_ch_by_ch','var'))
     figure(804); 
-    
-    subplot(121); montage(abs(nav_im_ch_by_ch),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
-    subplot(122); montage(abs(nav_sense_map),'displayrange',[]); xlabel('sense');
+    slice1=ceil(size(nav_im_ch_by_ch,3)/2);
+    slice2=ceil(size(nav_sense_map,3)/2);
+    subplot(121); montage(abs(nav_im_ch_by_ch(:,:,slice1,:)),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
+    subplot(122); montage(abs(nav_sense_map(:,:,slice2,:)),'displayrange',[]); xlabel('sense');
 end
 
 
@@ -145,10 +146,11 @@ pars.sense_map = 'external';  % external or ecalib
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
+pars.nav_phase_sm_kernel = 5;  %3 or 5, 1:no soomthing
 
-pars.enabled_ch = 1:30;
-pars.b0_shots = 22:28; %[] means first dynamic
-pars.nonb0_shots = 8:14;
+pars.enabled_ch = 1;
+pars.b0_shots = 1:42; %[] means first dynamic
+pars.nonb0_shots = 43:84;
 pars.recon_x_locs = 1:160;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
@@ -174,7 +176,7 @@ TSE.sense_mask = abs(sense_map_temp(:,:,:,1 ))>0;
 clear sense_map_temp;    
 %-------------------end---------------%
 
-clear mr nav_sense_map nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
+clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 

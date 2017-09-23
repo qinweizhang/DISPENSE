@@ -36,7 +36,11 @@ trj_meas_kz = trj_meas_kz_t';
 
 clear trj_meas_kx_t trj_meas_ky_t trj_meas_kz_t sig_bart_t
 
-recon_scale_factor = recon_par.recon_dim./ recon_par.acq_dim;
+try
+    recon_scale_factor = recon_par.recon_dim./ recon_par.acq_dim;
+catch
+    recon_scale_factor = [1 1 1];
+end
 
 scale_foctor_xy = max(2*pi/(max(trj_meas_kx)-min(trj_meas_kx))./recon_scale_factor(1),2*pi/(max(trj_meas_ky)-min(trj_meas_ky))./recon_scale_factor(2));
 trj_meas_kx_scaled = trj_meas_kx * scale_foctor_xy;

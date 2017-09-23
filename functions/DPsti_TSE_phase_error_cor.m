@@ -60,7 +60,7 @@ used_profile_nr = 0;
 for prof_idx = 1:size(ima_k_spa_data, 2)
     ky_idx = TSE.ky_matched(prof_idx) + floor(ky_dim/2)+1;
     kz_idx = TSE.kz_matched(prof_idx) + floor(kz_dim/2)+1;
-    ch_nr = mod(prof_idx, TSE.ch_dim) + 1;
+    ch_nr = mod(prof_idx-1, TSE.ch_dim)+1;
     ch_idx = find(pars.enabled_ch==ch_nr);
     sh_nr = TSE.shot_matched(prof_idx);
     sh_idx = find([b0_shots_range nonb0_shots_range]==sh_nr);
@@ -150,10 +150,11 @@ else
     end
 end
 
-if(exist('nav_sense_map','var')&&exist('im_b0_ch_by_ch','var'))
+if(exist('sense_map_3D','var')&&exist('im_b0_ch_by_ch','var'))
     figure(21); 
-    subplot(121); montage(abs(im_b0_ch_by_ch),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
-    subplot(122); montage(abs(sense_map_3D),'displayrange',[]); xlabel('sense');
+    slice = ceil(size(im_b0_ch_by_ch,3)/2);
+    subplot(121); montage(abs(im_b0_ch_by_ch(:,:,slice,:)),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
+    subplot(122); montage(abs(sense_map_3D(:,:,slice,:)),'displayrange',[]); xlabel('sense');
 end
 toc
 
@@ -179,15 +180,39 @@ toc
 %% preprocssing on phase error data
 disp('Preprocessing on phase error data');
 tic
-%match size of nav_im and to kspa_xyz
-nav_im_1 = double(nav_data(:,:,:,nonb0_shots_range));
-[kx, ky, kz, nc, nshot] = size(kspa_xyz);
-assert(size(nav_im_1, 4)==nshot);
+%ref shot: when k0 being acquired
+k0_idx = [floor(kx_dim/2)+1 floor(ky_dim/2)+1 floor(kz_dim/2)+1];
+for sh =1:nshot
+    if(abs(kspa_xyz(k0_idx(1),k0_idx(2),k0_idx(3), 1, sh))>0)
+        ref_shot = sh;
+    end
+end
 
-nav_k_1 = bart('fft 7', nav_im_1);
+%get nav_data;
+nav_im_1 = double(nav_data(:,:,:,nonb0_shots_range));
+
+%smooth the "phase difference"
+nav_im_1_diff = bsxfun(@rdivide, nav_im_1, nav_im_1(:,:,:,ref_shot)); %difference with the ref
+nav_im_1_diff(find(isnan(nav_im_1_diff)))=0; nav_im_1_diff(find(isinf(nav_im_1_diff)))=0;
+
+for sh = 1:size(nav_im_1_diff,4)
+    nav_im_1_diff_phase_sm = smooth3(angle(nav_im_1_diff(:,:,:,sh)),'box',pars.nav_phase_sm_kernel);
+    nav_im_1_diff_sm(:,:,:,sh) = abs(nav_im_1(:,:,:,sh)).*exp(1i.*nav_im_1_diff_phase_sm);
+end
+figure(501);
+subplot(121); immontage4D(angle(nav_im_1_diff),[-pi pi]); colormap jet; title('phase error before sm');
+subplot(122); immontage4D(angle(nav_im_1_diff_sm),[-pi pi]); colormap jet; title('phase error after sm');
+
+
+%interpolate to the correct size
+[kx, ky, kz, nc, nshot] = size(kspa_xyz);
+assert(size(nav_im_1_diff_sm, 4)==nshot);
+
+nav_k_1 = bart('fft 7', nav_im_1_diff_sm);
 resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', ky, ky, kz, nshot); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
 nav_k_1 = bart(resize_command, nav_k_1);
 nav_im_2 = bart('fft -i 7', nav_k_1);
+
 
 resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', kx, ky, kz, nshot);
 nav_im_2 = bart(resize_command_2, nav_im_2);
@@ -195,16 +220,8 @@ nav_im_2 = nav_im_2./abs(nav_im_2); %magnitude to 1;
 nav_im_2(isnan(nav_im_2)) = 0; nav_im_2(isinf(nav_im_2)) = 0;
 
 phase_error_3D = nav_im_2;
-k0_idx = [floor(kx_dim/2)+1 floor(ky_dim/2)+1 floor(kz_dim/2)+1];
 
-for sh =1:nshot
-    if(abs(kspa_xyz(k0_idx(1),k0_idx(2),k0_idx(3), 1, sh))>0)
-        ref_shot = sh;
-    end
-end
-phase_error_3D = bsxfun(@rdivide, phase_error_3D, phase_error_3D(:,:,:,ref_shot)); %difference with the ref
 phase_error_3D = normalize_sense_map(phase_error_3D); %miss use normalize_sense_map
-% phase_error_3D = conj(bsxfun(@times, phase_error_3D, abs(sense_map_3D(:,:,:,1))>eps)) + eps; %mask the outer region
 phase_error_3D = conj(bsxfun(@times, phase_error_3D, TSE.sense_mask));  %conj or not???
 
 figure(5);
@@ -239,6 +256,9 @@ if (kz>1)
         subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0');
         subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
         subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');
+        
+%         figure(102); montage(angle((phase_error)),[-pi pi]); colormap jet
+        
         
     end
     

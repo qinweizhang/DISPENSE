@@ -28,18 +28,17 @@ close all;
 [kx_length ch_nr shot_nr dyn_nr] = size(nav_k_spa_data);
 
 nav_im_recon_nufft = [];
-for dyn = 1:1%dyn_nr
+for dyn = 1:dyn_nr
     dyn
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [26 26 10];  
-    recon_par.recon_dim  = [160 160 10];
+    recon_par.recon_dim  = [26 26 10];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = []; %or []: till the end;
-    recon_par.interations = 10;
-    recon_par.lamda = 0.1;
-    recon_par.recon_all_shot = 0;
+    recon_par.interations = 5;
+    recon_par.lamda = 0.3;
+    recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon =1;
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
@@ -69,10 +68,10 @@ for dyn = 1:1%dyn_nr
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
-figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft)),[-pi pi]); colormap jet; 
-figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft)),[]); 
+figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft(:,:,:,:,:,2))),[-pi pi]); colormap jet; 
+figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft(:,:,:,:,:,2))),[]); 
 phase_diff = angle(squeeze(bsxfun(@times,  nav_im_recon_nufft, exp(-1i*angle(nav_im_recon_nufft(:,:,:,1,1,:))))));
-figure(803); immontage4D(squeeze(phase_diff),[-pi pi]); colormap jet;
+figure(803); immontage4D(squeeze(phase_diff(:,:,:,:,2)),[-pi pi]); colormap jet;
 
 if(recon_par.channel_by_channel)
     nav_im_ch_by_ch = nav_im_recon_nufft_1dyn;
@@ -141,7 +140,7 @@ TSE.dyn_dim = dyn_nr;
 TSE_sense_map = []; %calc again using get_sense_map_external
 
 %parameters for DPsti_TSE_phase_error_cor
-pars.sense_map = 'ecalib';  % external or ecalib 
+pars.sense_map = 'external';  % external or ecalib 
 
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
@@ -154,7 +153,7 @@ pars.recon_x_locs = 1:160;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
-pars.msDWIrecon.CG_SENSE_I.lamda=0.5;
+pars.msDWIrecon.CG_SENSE_I.lamda=2;
 pars.msDWIrecon.CG_SENSE_I.nit=10;
 pars.msDWIrecon.CG_SENSE_I.tol = 1e-10;
 pars.msDWIrecon.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
