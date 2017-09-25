@@ -1,9 +1,9 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_09_19_SND_brain')
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_09_24_SND_brain/brain')
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_for_Sc6.mat';
+trj_save_fn = 'traj_for_Sc7.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_19092017_1741167_2_2_wipsc4dpstisosadlinearppuV4.raw';
-sense_ref_fn = 'sn_19092017_1740214_1000_5_wipsenserefscanV4.raw';
-coil_survey_fn  = 'sn_19092017_1734568_1000_2_wipcoilsurveyscanV4.raw';
+data_fn = 'lr_24092017_1556447_5_2_wip_3d_snd_brain_4bV4.raw';
+sense_ref_fn = 'lr_24092017_1550309_1000_11_wip_senserefscanV4.raw';
+coil_survey_fn  = 'lr_24092017_1550042_1000_8_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc2.mat';
+trj_mat_fn = 'traj_for_Sc4.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -31,14 +31,14 @@ nav_im_recon_nufft = [];
 for dyn = 1:dyn_nr
     dyn
     %=============== recon parameters =========================
-    recon_par.ignore_kz = 1;
-    recon_par.acq_dim = [36 36 1];  
-    recon_par.recon_dim  = [36 36 1];
+    recon_par.ignore_kz = 0;
+    recon_par.acq_dim = [26 26 11];  
+    recon_par.recon_dim  = [26 26 11];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
-    recon_par.end_point = 1928; %[]; %or []: till the end;
-    recon_par.interations = 3;
-    recon_par.lamda = 1;
+    recon_par.end_point = []; %or []: till the end;
+    recon_par.interations = 5;
+    recon_par.lamda = 2;
     recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
@@ -69,10 +69,10 @@ for dyn = 1:dyn_nr
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
-figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft)),[-pi pi]); colormap jet; 
-figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft)),[]); 
+figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft(:,:,:,:,:,4))),[-pi pi]); colormap jet; 
+figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft(:,:,:,:,:,4))),[]); 
 phase_diff = angle(squeeze(bsxfun(@times,  nav_im_recon_nufft, exp(-1i*angle(nav_im_recon_nufft(:,:,:,1,1,:))))));
-figure(803); immontage4D(squeeze(phase_diff),[-pi pi]); colormap jet;
+figure(803); immontage4D(squeeze(phase_diff(:,:,:,:,4)),[-pi pi]); colormap jet;
 
 if(recon_par.channel_by_channel)
     nav_im_ch_by_ch = nav_im_recon_nufft_1dyn;
@@ -89,7 +89,7 @@ end
 
 disp('-finished- ');
 %% -----BART recon -------%
-%{
+%{ 
 disp(' Spiral NUFFT recon (BART)...')
 data_fn = 'data_Sc14_3D.mat';
 trj_fn = 'traj_Sc25_26_27_for_Sc14.mat';
@@ -127,7 +127,7 @@ parameter2read.dyn = [];
 
 TSE
 
-figure(606); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [100 1000]);
+figure(606); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [100 1500]);
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
@@ -146,17 +146,17 @@ pars.sense_map = 'external';  % external or ecalib
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
-pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
+pars.nav_phase_sm_kernel = 1;  %3 or 5, 1:no soomthing
 
-pars.enabled_ch = 1:30;
-pars.b0_shots = 22:28 %[] means first dynamic
-pars.nonb0_shots = 8:14;
+pars.enabled_ch = 1;
+pars.b0_shots = 121:160; %[] means first dynamic
+pars.nonb0_shots = [1:40] + (1-1)*40;
 pars.recon_x_locs = 1:160;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
-pars.msDWIrecon.CG_SENSE_I.lamda=0.5;
-pars.msDWIrecon.CG_SENSE_I.nit=10;
+pars.msDWIrecon.CG_SENSE_I.lamda=1;
+pars.msDWIrecon.CG_SENSE_I.nit=5;
 pars.msDWIrecon.CG_SENSE_I.tol = 1e-10;
 pars.msDWIrecon.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
 pars.msDWIrecon.POCS.nit = 50;
@@ -179,6 +179,40 @@ clear sense_map_temp;
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
+
+%% DTI data processing. ADC, FA map
+b = 800;
+g_all = [0 0 0;...
+    1.00000,  0.00000,  1.00000; ...
+    -0.41413,  0.94518,  0.96702; ...
+    -1.00000,  0.00000,  1.00000; ...
+    -0.41413, -0.94518,  0.96702; ...
+    -0.96702, -0.94518,  0.41413; ...
+    -0.96702,  0.94518,  0.41413; ...
+    0.78398, -0.87792,  0.78398; ...
+    0.78398,  0.87792,  0.78398];
+
+clear MD FA eigvec
+
+selected_volume = 1:9;
+DTI_data = abs(image_corrected_all(:,:,:,selected_volume));
+g = g_all(selected_volume,:);
+
+[MD, FA, eigvec] = DTI_fitting(DTI_data, g, b);
+
+
+mask = DTI_data(:,:,:,1)>10;
+MD = bsxfun(@times,MD, mask );
+FA = bsxfun(@times,FA, mask );
+eigvec = bsxfun(@times,eigvec, mask );
+
+figure(63); 
+imshow(MD,[0 0.003]); colormap jet; colorbar; title('MD');
+figure(64); 
+imshow(FA,[0 1]);  colorbar; title('FA'); colormap hot;
+
+eigvec = permute(eigvec,[1 2 3 5 4]);
+figure(65);montage(permute(squeeze(eigvec(:,:,1,:,:)),[1 2 3 4]));  colorbar; title('eigenvector #1');
 
 
 %% Linear motion correction

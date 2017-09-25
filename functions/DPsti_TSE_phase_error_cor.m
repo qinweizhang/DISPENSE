@@ -80,7 +80,8 @@ che=create_checkerboard([1,size(kspa_all,2),size(kspa_all,3)]);
 kspa_all=bsxfun(@times,kspa_all,che);
 
 
-kspa_b0 = sum(kspa_all(:,:,:,:,[1:length(b0_shots_range)]), 5); %4D b0 kspace [kx ky kz nc]
+kspa_b0 = sum(kspa_all(:,:,:,:,[1:length(b0_shots_range)]), 5)./sum(abs(kspa_all(:,:,:,:,[1:length(b0_shots_range)]))>0, 5); %4D b0 kspace [kx ky kz nc]; non-zeros average
+kspa_b0(find(isnan(kspa_b0)))=0; kspa_b0(find(isinf(kspa_b0)))=0;
 
 im_b0_ch_by_ch=bart('fft -i 7',kspa_b0);
 im_b0=bart('rss 8',im_b0_ch_by_ch);
@@ -164,7 +165,9 @@ disp('Preprocessing on kspace data for nonb0');
 tic
 kspa_xyz = kspa_all(:,:,:,:,(length(b0_shots_range)+1):end);
 
-kk = sum(kspa_xyz, 5); %4D b0 kspace [kx ky kz nc]
+kk = sum(kspa_xyz, 5)./ sum(abs(kspa_xyz)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zero average
+kk(find(isnan(kk)))=0; kk(find(isinf(kk)))=0; 
+
 im_b0_ch_by_ch=bart('fft -i 7',kk);
 im_nonb0=bart('rss 8',im_b0_ch_by_ch);
 figure(2); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
@@ -180,6 +183,9 @@ toc
 %% preprocssing on phase error data
 disp('Preprocessing on phase error data');
 tic
+
+[kx, ky, kz, nc, nshot] = size(kspa_xyz);
+
 %ref shot: when k0 being acquired
 k0_idx = [floor(kx_dim/2)+1 floor(ky_dim/2)+1 floor(kz_dim/2)+1];
 for sh =1:nshot
@@ -189,36 +195,54 @@ for sh =1:nshot
 end
 
 %get nav_data;
-nav_im_1 = double(nav_data(:,:,:,nonb0_shots_range));
+nav_im_1 = double(nav_data(:,:,:,nonb0_shots_range)); %b0_shots_range for b0 correction; default: nonb0_shots_range
 
 %smooth the "phase difference"
 nav_im_1_diff = bsxfun(@rdivide, nav_im_1, nav_im_1(:,:,:,ref_shot)); %difference with the ref
 nav_im_1_diff(find(isnan(nav_im_1_diff)))=0; nav_im_1_diff(find(isinf(nav_im_1_diff)))=0;
 
 for sh = 1:size(nav_im_1_diff,4)
-    nav_im_1_diff_phase_sm = smooth3(angle(nav_im_1_diff(:,:,:,sh)),'box',pars.nav_phase_sm_kernel);
+    nav_im_1_diff_phase_sm = smooth3(permute(angle(nav_im_1_diff(:,:,:,sh)),[3 1 2]),'box',pars.nav_phase_sm_kernel);
+    nav_im_1_diff_phase_sm = permute(nav_im_1_diff_phase_sm, [2 3 1]);
     nav_im_1_diff_sm(:,:,:,sh) = abs(nav_im_1(:,:,:,sh)).*exp(1i.*nav_im_1_diff_phase_sm);
 end
 figure(501);
-subplot(121); immontage4D(angle(nav_im_1_diff),[-pi pi]); colormap jet; title('phase error before sm');
-subplot(122); immontage4D(angle(nav_im_1_diff_sm),[-pi pi]); colormap jet; title('phase error after sm');
+subplot(221); immontage4D(abs(nav_im_1),[]); colormap jet; title('mag map before sm');
+subplot(223); immontage4D(angle(nav_im_1),[-pi pi]); colormap jet; title('phase map before sm');
+subplot(222); immontage4D(angle(nav_im_1_diff),[-pi pi]); colormap jet; title('phase error before sm');
+subplot(224); immontage4D(angle(nav_im_1_diff_sm),[-pi pi]); colormap jet; title('phase error after sm');
 
 
 %interpolate to the correct size
-[kx, ky, kz, nc, nshot] = size(kspa_xyz);
-assert(size(nav_im_1_diff_sm, 4)==nshot);
+kspace_interpo =  false;
+if(kspace_interpo)
+    assert(size(nav_im_1_diff_sm, 4)==nshot);
 
-nav_k_1 = bart('fft 7', nav_im_1_diff_sm);
-resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', ky, ky, kz, nshot); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
-nav_k_1 = bart(resize_command, nav_k_1);
-nav_im_2 = bart('fft -i 7', nav_k_1);
-
+    nav_k_1 = bart('fft 7', nav_im_1_diff_sm);
+    resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', ky, ky, kz, nshot); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
+    nav_k_1 = bart(resize_command, nav_k_1);
+    nav_im_2 = bart('fft -i 7', nav_k_1);
+    
+else %linear intopolation
+    
+    if kz==1 %2D case; use imresize
+        nav_im_2 = imresize(nav_im_1_diff_sm,ky./size(nav_im_1_diff_sm,2));
+    else % 3D use interp3
+        [~, nav_y, nav_z, nav_shots] = size(nav_im_1_diff_sm);
+        nav_im_2 = zeros(ky, ky, kz, nav_shots);
+        for sh=1:nav_shots
+            [X, Y, Z] = meshgrid(linspace(1,ky,nav_y),linspace(1,ky,nav_y),linspace(1,kz,nav_z) );  %corrdinate for original locations
+            [Xq,Yq,Zq] = meshgrid(1:ky,1:ky,1:kz );  %corrdinate for intoplated locations
+            nav_im_2(:,:,:,sh) = interp3(X,Y,Z,squeeze(nav_im_1_diff_sm(:,:,:,sh)),Xq,Yq,Zq);
+        end
+    end
+    
+end
 
 resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', kx, ky, kz, nshot);
 nav_im_2 = bart(resize_command_2, nav_im_2);
 nav_im_2 = nav_im_2./abs(nav_im_2); %magnitude to 1;
 nav_im_2(isnan(nav_im_2)) = 0; nav_im_2(isinf(nav_im_2)) = 0;
-
 phase_error_3D = nav_im_2;
 
 phase_error_3D = normalize_sense_map(phase_error_3D); %miss use normalize_sense_map

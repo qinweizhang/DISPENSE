@@ -31,14 +31,14 @@ nav_k_spa_data = nav_k_spa_data(kx/2+1:end,:,:,:,:); %for DPnav when no pi jump 
 
 %% display relevant spiral parameters
 try
-    GOAL_Par = MR_TSEDPnav_data.Parameter.GetParameter('UGN1_T2PREP_DPnav_xyRes');
-    disp(['DPnav_xyRes: ', num2str(GOAL_Par.GetValue)]);
-    GOAL_Par = MR_TSEDPnav_data.Parameter.GetParameter('UGN1_T2PREP_DPnav_zRes');
-    disp(['DPnav_zRes: ', num2str(GOAL_Par.GetValue)]);
-    GOAL_Par = MR_TSEDPnav_data.Parameter.GetParameter('UGN1_T2PREP_DPnav_Rxy');
-    disp(['DPnav_Rxy: ', num2str(GOAL_Par.GetValue)]);
-    GOAL_Par = MR_TSEDPnav_data.Parameter.GetParameter('UGN1_T2PREP_DPnav_Rz');
-    disp(['DPnav_Rz: ', num2str(GOAL_Par.GetValue)]);
+    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_xyRes');
+    disp(['DPnav_xyRes: ', num2str(GOAL_value)]);
+    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_zRes');
+    disp(['DPnav_zRes: ', num2str(GOAL_value)]);
+    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_Rxy');
+    disp(['DPnav_Rxy: ', num2str(GOAL_value)]);
+    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_Rz');
+    disp(['DPnav_Rz: ', num2str(GOAL_value)]);
     GOAL_Par = MR_TSEDPnav_data.Parameter.GetObject('AQ`DPnav');
     disp(['AQ samples: ', num2str(GOAL_Par.GetValue('samples'))]);
 catch
