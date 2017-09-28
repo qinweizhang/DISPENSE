@@ -38,9 +38,11 @@ for kz_idx = 1:length(kz_all)
         kxy_max_now = sqrt(kxy_max.^2 - kz_all(kz_idx).^2);
     end
     [k,g,s,time] = vds(sr_max,gr_max,gr_dwell,Par.N,Fcoeff,kxy_max_now);
-    phi_end = angle(k(end));
-    k =  k .* exp(-i.*phi_end); %always ends at 0 degree
+
     k = smooth_traj_end(k);
+    phi_end = angle(k(end)) + kz_idx.*pi/4;
+    k =  k .* exp(-i.*phi_end); %always ends at 0 degree
+    
     %connect with previous spirals
     if(mod(kz_idx, 2) == 0) %even spirals; spiral in
         %reverse order and flip in y axis(imaginary)

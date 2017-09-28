@@ -90,7 +90,7 @@ MR_DPsti_shotLabel.SortData;
 Ima_Sorted_shot_lable = squeeze(double(MR_DPsti_shotLabel.Data));
 clear shot_label_temp; shot_label_temp(:,:,1,:) = squeeze(Ima_Sorted_shot_lable(32,:,:,2,:));
 figure(605); montage(shot_label_temp,'displayrange',[]); colormap jet; title('shot labels');colorbar
-figure(606); imshow(squeeze(Ima_Sorted_shot_lable(32,:,:,1,1)),[]); colormap jet; colorbar
+figure(606); imagesc(squeeze(Ima_Sorted_shot_lable(32,:,:,1,1))'); colormap jet; colorbar; axis off; axis equal; xlabel('ky'); ylabel('kz')
 
 %-------------------DONE---------------------------
 

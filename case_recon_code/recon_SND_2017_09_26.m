@@ -1,9 +1,9 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_09_24_SND_brain/brain')
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_09_26_SND_external_waveform_test')
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_for_Sc7.mat';
+trj_save_fn = 'traj_for_Sc2.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'lr_24092017_1556447_5_2_wip_3d_snd_brain_4bV4.raw';
-sense_ref_fn = 'lr_24092017_1550309_1000_11_wip_senserefscanV4.raw';
-coil_survey_fn  = 'lr_24092017_1550042_1000_8_wip_coilsurveyscanV4.raw';
+data_fn = 'ex_26092017_1844550_2_2_wip_dpsti_sosnd_externalV4.raw';
+sense_ref_fn = 'ex_26092017_1843176_1000_7_wip_senserefscanV4.raw';
+coil_survey_fn  = 'ex_26092017_1839534_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc4.mat';
+trj_mat_fn = 'traj_for_Sc2.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -28,18 +28,18 @@ close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 nav_im_recon_nufft = [];
-for dyn = 1:dyn_nr
+for dyn = 1:1
     dyn
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [26 26 11];  
-    recon_par.recon_dim  = [26 26 11];
+    recon_par.acq_dim = [21 21 12];  
+    recon_par.recon_dim  = [21 21 12];
     recon_par.dyn_nr = dyn;
-    recon_par.skip_point = 0 ;
+    recon_par.skip_point = 70 ;
     recon_par.end_point = []; %or []: till the end;
     recon_par.interations = 5;
     recon_par.lamda = 2;
-    recon_par.recon_all_shot = 1;
+    recon_par.recon_all_shot = 0;
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
@@ -127,7 +127,7 @@ parameter2read.dyn = [];
 
 TSE
 
-figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [100 1500]);
+figure(606); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [100 1500]);
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
@@ -146,9 +146,9 @@ pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
 
-pars.enabled_ch = [5 8 16];
+pars.enabled_ch = 1:35;
 pars.b0_shots = 127:168; %[] means first dynamic
-pars.nonb0_shots = [1:42] + (1-1)*42;
+pars.nonb0_shots = [1:42] + (3-1)*42;
 pars.recon_x_locs = 1:160;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
