@@ -11,7 +11,7 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'lr_24092017_1556447_5_2_wip_3d_snd_brain_4bV4.raw';
+data_fn = 'lr_24092017_1551062_4_2_wip_sc3_snd_brain_4b_ppuV4.raw';
 sense_ref_fn = 'lr_24092017_1550309_1000_11_wip_senserefscanV4.raw';
 coil_survey_fn  = 'lr_24092017_1550042_1000_8_wip_coilsurveyscanV4.raw';
 
@@ -127,7 +127,7 @@ parameter2read.dyn = [];
 
 TSE
 
-figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [100 1500]);
+figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [100 500]);
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
