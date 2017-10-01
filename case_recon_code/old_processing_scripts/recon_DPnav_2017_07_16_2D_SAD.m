@@ -1,5 +1,6 @@
 
-clear; vars_kerry; set(0,'DefaultAxesFontSize',22);
+clear;
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_09_24_SND_brain/brain')
 
 %% Set file names
 clear; close all; clc

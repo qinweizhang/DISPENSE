@@ -46,23 +46,25 @@ while(it<pars.POCS.nit && residual_error>pars.POCS.tol)
     
     %update initial point for next step (recover true shot by shot phase)
     x = bsxfun(@times, x_esti, (px_allshots_lr./abs(px_allshots_lr)));
+%     x = repmat(x_esti,[1 1 42]);
     
     if(it>1)
         residual_error = trace((x_esti-x_esti_old)'*(x_esti-x_esti_old)) / trace(x_esti_old'*x_esti_old);
     end
 
-    disp(['nit: ', num2str(it)]); 
-    disp(['residual_error: ', num2str(residual_error)]); 
+%     disp(['nit: ', num2str(it)]); 
+%     disp(['residual_error: ', num2str(residual_error)]); 
     
     figure(11); 
-    subplot(131); imshow(abs(x_esti),[]); title('esti. mag.');
-    subplot(132); imshow(angle(x_esti),[-pi pi]); title('esti. phase');drawnow(); 
-    subplot(133); plot(it, log10(residual_error),'ro'); xlim([1 pars.POCS.nit]); ylim([-11 0]); hold on;
+    subplot(221); imshow(abs(x_esti),[]); title('esti. mag.');
+    subplot(222); imshow(angle(x_esti),[-pi pi]); title('esti. phase');drawnow(); 
+    subplot(212); plot(it, log10(residual_error),'ro'); xlim([1 pars.POCS.nit]); ylim([-11 0]); title('log10-residual error'); hold on;
     
     it = it +1;
     
     
 end
+cla
 
 sol =  x_esti;
 

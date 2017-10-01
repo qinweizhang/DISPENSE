@@ -18,6 +18,7 @@ pars.POCS.tol = 1e-10;
 pars.POCS.nufft = false;
 
 
+pars.LRT = LRT_params_init();
 end
 
 
