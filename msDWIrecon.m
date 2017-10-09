@@ -65,7 +65,9 @@ if strcmp(pars.method, 'CG_SENSE_I')
     lamda =  pars.CG_SENSE_I.lamda;
     maxit =  pars.CG_SENSE_I.nit;
     tol =   pars.CG_SENSE_I.tol;
-    image_corrected=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', tol);
+    
+    image_corrected_unfiltered=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', tol);
+    image_corrected = filt_perifiral_kspa(image_corrected_unfiltered, squeeze(sum(mask(:,:,1,:),4)));
 elseif strcmp(pars.method, 'CG_SENSE_K')    
     %% KSPACE CG_SENSE TODO
     

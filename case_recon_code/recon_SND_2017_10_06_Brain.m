@@ -176,7 +176,7 @@ pars.msDWIrecon.method='CG_SENSE_I'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 %------------sense mask calc----------%
 os = [1, 1, 1];
 dim = [range(TSE.Ixrange), range(TSE.Iyrange), range(TSE.Izrange) ]+1;
-sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [dim(2) dim(2) dim(3)], os);
+[sense_map_temp, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [dim(2) dim(2) dim(3)], os);
 rs_command = sprintf('resize -c 0 %d', dim(1));
 sense_map_temp = bart(rs_command, sense_map_temp);
 
@@ -187,7 +187,7 @@ clear sense_map_temp;
 
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
-for d = 1:9
+for d = 1:1
     pars.nonb0_shots = [1:40] + (d-1)*40;
 
     image_sense_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);

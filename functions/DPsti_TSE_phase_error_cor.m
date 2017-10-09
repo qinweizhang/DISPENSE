@@ -271,8 +271,8 @@ image_corrected = zeros(TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim);
 tic;
 if (TSE.Iz_dim>1)
     %% 3D recon
-    recon_x = [96: 288]; %pars.recon_x_locs;
-%     recon_x = 200
+%     recon_x = [96: 288]; %pars.recon_x_locs;
+    recon_x = 200
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);

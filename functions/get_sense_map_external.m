@@ -1,4 +1,4 @@
-function  sens_map = get_sense_map_external(sense_ref, data_fn, coil_survey, varargin)
+function  [sens_map, varargout] = get_sense_map_external(sense_ref, data_fn, coil_survey, varargin)
 
 if(nargin == 4)
     recon_dim = varargin{1};
@@ -50,20 +50,36 @@ end
 MR_sense.Perform;
 
 sens_map_default_sorting = double(MR_sense.Sensitivity);
+sens_Psi_default_sorting = MR_sense.Psi;
+
 sens_map_no_sorting = sens_map_default_sorting .* 0;
+sens_Psi_no_sorting = sens_Psi_default_sorting .* 0;
+
 ch_order = r.Parameter.Labels.CoilNrs(:,1); %targeting sorting order. 
 sorted_order = sort(ch_order);  %current sorting order
+
 for c =1:length(ch_order)
-    ch_nr = sorted_order(c);
-    permute_oder = find(ch_order==ch_nr);
-    sens_map_no_sorting(:,:,:,permute_oder) = sens_map_default_sorting(:,:,:,c);
+    permute_order(c) =  find(sorted_order==ch_order(c));
 end
 
+sens_map_no_sorting = sens_map_default_sorting(:,:,:,permute_order);
+sens_Psi_no_sorting = sens_Psi_default_sorting(permute_order, permute_order);
+
+% for c =1:length(ch_order)
+%     ch_nr = sorted_order(c);
+%     permute_oder = find(ch_order==ch_nr);
+%     sens_map_no_sorting(:,:,:,permute_oder) = sens_map_default_sorting(:,:,:,c);
+% end
+
 sens_map = sens_map_no_sorting;
+
 ch_order'
-str = sprintf('Kerry: Self sense calculation sort channel dimention based on the natural channel order in list file/chan_labels/Parameter.Labels.CoilNrs. \n\t\ti.e. The channel label value is not considered. \n\t\t Should do the same for the data!');
+str = sprintf('Kerry: Self sense calculation sort channel dimention based on the natural channel order in list file/chan_labels/Parameter.Labels.CoilNrs. \n\t\ti.e. The channel label value is not considered. \n\t\t Should do the same for the data!  \n\t\t Psi is also reordered accordingly');
 warning(str);
 
+if(nargout==2)
+    varargout{1} = MR_sense.Psi;
+end
 % sens_map = sens_map_default_sorting;
 
 if(rs == 1)
@@ -75,5 +91,11 @@ subplot(211);
 immontage4D(abs(sens_map)); title('sens maps (mag)'); xlabel('channels'); ylabel('slices');
 subplot(212);
 immontage4D(angle(sens_map),[-pi pi]); title('sens maps (phase)'); xlabel('channels'); ylabel('slices');
+
+figure(712);
+subplot(121);
+imagesc(abs(sens_Psi_default_sorting)); title('sens Psi (defualt)'); 
+subplot(122);
+imagesc(abs(sens_Psi_no_sorting)); title('sens Psi (modifiled order)'); 
 
 end
