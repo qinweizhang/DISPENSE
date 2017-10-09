@@ -28,17 +28,23 @@ for prof_idx = 1:total_profile
     sh_nr = TSE.shot_matched(prof_idx);
     sh_idx = find(shot_range==sh_nr);
     if(~isempty(ch_idx)&&~isempty(sh_idx))
-        ky_idx = TSE.ky_matched(prof_idx) + floor(ky_dim/2)+1;
-        kz_idx = TSE.kz_matched(prof_idx) + floor(kz_dim/2)+1;
+        
+        ky_idx = TSE.ky_matched(prof_idx) + floor(ky_dim/2)+1;  
+        kz_idx = TSE.kz_matched(prof_idx) + floor(kz_dim/2)+1;  
+        
+        ky_idx_sense = TSE.ky_matched(prof_idx).*TSE.SENSE_ky + floor(ky_dim/2)+1;  %temporary solution only for SENSE = int
+        kz_idx_sense = TSE.kz_matched(prof_idx).*TSE.SENSE_kz + floor(kz_dim/2)+1;  %temporary solution only for SENSE = int
+        
         used_profile_nr = used_profile_nr+1;
         checker_board_factor = double((-1).^(ky_idx+kz_idx+1));  %-1 top left corner
-        kspa_temp(:,ky_idx,kz_idx,ch_idx) =  ima_k_spa_data(:,prof_idx) .* checker_board_factor;
-        shot_all_temp(1,ky_idx,kz_idx,ch_idx) = sh_idx;
+        
+        kspa_temp(:,ky_idx_sense,kz_idx_sense,ch_idx) =  ima_k_spa_data(:,prof_idx) .* checker_board_factor;
+        shot_all_temp(1,ky_idx_sense,kz_idx_sense,ch_idx) = sh_idx;
     end
 end
 close(h)
 
-temp = kspa_temp(round(kx_dim/2),:,:,:);
+temp = kspa_temp(round(size(kspa_temp,1)/2),:,:,:);
 assert(used_profile_nr == sum(abs(temp(:))>0)); clear temp
 size(kspa_temp)
 

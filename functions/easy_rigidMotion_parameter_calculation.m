@@ -1,74 +1,80 @@
-function easy_rigidMotion_parameter_calculation(fn)
-
-    load(fn);
-
+function[ nav_ima_phase_unwrapped_diff,fitted_nav_ima_phase, linear_phase_xy,global_phase] =  easy_rigidMotion_parameter_calculation( nav_ima_phase_unwrapped, nav_im_recon_nufft)
 
     ref_shot_idx = 4;
-    [kx, ky, ch, shot] = size(nav_kspa_recon_nufft);
+    [kx, ky, ch, shot] = size(nav_ima_phase_unwrapped);
 
     for ch_idx = 1:ch
-
-        figure(3); montage(abs(nav_kspa_recon_nufft(:,:,ch_idx,:)),'displayrange',[])
-        figure(4); montage(angle(nav_kspa_recon_nufft(:,:,ch_idx,:)),'displayrange',[-pi pi]); colormap jet
-        ref_nav = nav_kspa_recon_nufft(:,:,ch_idx,ref_shot_idx); %ref_shot_idx shot as the reference navigator
-
-        for shot_idx = 1:shot
-
-             current_nav = nav_kspa_recon_nufft(:,:,ch_idx,shot_idx);
-
-            % argmax|Sref(K)|
-            Ref_max_ix = find(abs(ref_nav(:)) == max(abs(ref_nav(:))));
-            Ref_max_kx = (mod(mod(Ref_max_ix,(kx*ky)),kx));
-            Ref_max_ky = (ceil(mod(Ref_max_ix,(kx*ky))/kx));
-            Ref_max = ref_nav(Ref_max_kx, Ref_max_ky);
-            % argmax|Sb(K)|
-            current_max_ix = find(abs(current_nav(:)) == max(abs(current_nav(:))));
-            current_max_kx = (mod(mod(current_max_ix,(kx*ky)),kx));
-            current_max_ky = (ceil(mod(current_max_ix,(kx*ky))/kx));
-            current_max = current_nav(current_max_kx, current_max_ky);
-
-            global_phase_diff_initial(shot_idx) = angle(current_max) - angle(Ref_max); %rad
-
-            nav_kspa_global_calibrated(:,:,ch_idx,shot_idx) = current_nav.*exp(-i * global_phase_diff_initial(shot_idx));
-
-            offset_x(shot_idx) = current_max_kx - Ref_max_kx; %in pixel
-            offset_y(shot_idx) = current_max_ky - Ref_max_ky; %in pixel
-
-        end   
-
-
         
-        %------------------------------------------------------DISPLAY----------------------------------%
-                       
-                        
 
-                        for shot_idx = 1:shot
-                            nav_ima_raw_phase_diff(:,:,ch_idx,shot_idx) = angle(nav_im_recon_nufft(:,:,ch_idx,shot_idx)) - angle(nav_im_recon_nufft(:,:,ch_idx,ref_shot_idx));
-                        end
-                        figure(5); montage(nav_ima_raw_phase_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
-
-                        for shot_idx = 1:shot
-                            nav_ima_phase_unwrapped_diff(:,:,ch_idx,shot_idx) = nav_ima_phase_unwrapped(:,:,ch_idx,shot_idx) - nav_ima_phase_unwrapped(:,:,ch_idx,ref_shot_idx);
-                        end
-                        figure(6); montage(nav_ima_phase_unwrapped_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
+%         figure(3); montage(abs(nav_kspa_recon_nufft(:,:,ch_idx,:)),'displayrange',[])
+%         figure(4); montage(angle(nav_kspa_recon_nufft(:,:,ch_idx,:)),'displayrange',[-pi pi]); colormap jet
+%         ref_nav = nav_kspa_recon_nufft(:,:,ch_idx,ref_shot_idx); %ref_shot_idx shot as the reference navigator
+        
+        if(0)
+            for shot_idx = 1:shot
                 
-                        nav_ima_global_calibrated = bart('fft -i 3', nav_kspa_global_calibrated);
-                        for shot_idx = 1:shot
-                            nav_ima_global_calibrated_phase_diff(:,:,ch_idx,shot_idx) = angle(nav_ima_global_calibrated(:,:,ch_idx,shot_idx)) - angle(nav_ima_global_calibrated(:,:,ch_idx,ref_shot_idx));
-                        end
-                        figure(7); montage(nav_ima_global_calibrated_phase_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
-                        
-        %--------------------------------------------------------------------------------------------------%
-
-        % --------- Linear &GLOBAL phase errror estimation in image domain
-
-
-        [X, Y] = meshgrid(-(kx/2-1):kx/2, -(ky/2-1):ky/2); 
+                current_nav = nav_kspa_recon_nufft(:,:,ch_idx,shot_idx);
+                
+                % argmax|Sref(K)|
+                Ref_max_ix = find(abs(ref_nav(:)) == max(abs(ref_nav(:))));
+                Ref_max_kx = (mod(mod(Ref_max_ix,(kx*ky)),kx));
+                Ref_max_ky = (ceil(mod(Ref_max_ix,(kx*ky))/kx));
+                Ref_max = ref_nav(Ref_max_kx, Ref_max_ky);
+                % argmax|Sb(K)|
+                current_max_ix = find(abs(current_nav(:)) == max(abs(current_nav(:))));
+                current_max_kx = (mod(mod(current_max_ix,(kx*ky)),kx));
+                current_max_ky = (ceil(mod(current_max_ix,(kx*ky))/kx));
+                current_max = current_nav(current_max_kx, current_max_ky);
+                
+                global_phase_diff_initial(shot_idx) = angle(current_max) - angle(Ref_max); %rad
+                
+                nav_kspa_global_calibrated(:,:,ch_idx,shot_idx) = current_nav.*exp(-i * global_phase_diff_initial(shot_idx));
+                
+                offset_x(shot_idx) = current_max_kx - Ref_max_kx; %in pixel
+                offset_y(shot_idx) = current_max_ky - Ref_max_ky; %in pixel
+                
+            end
+            
+            
+            
+            %------------------------------------------------------DISPLAY----------------------------------%
+            
+            
+            
+            for shot_idx = 1:shot
+                nav_ima_raw_phase_diff(:,:,ch_idx,shot_idx) = angle(nav_im_recon_nufft(:,:,ch_idx,shot_idx)) - angle(nav_im_recon_nufft(:,:,ch_idx,ref_shot_idx));
+            end
+            figure(5); montage(nav_ima_raw_phase_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
+            
+            for shot_idx = 1:shot
+                nav_ima_phase_unwrapped_diff(:,:,ch_idx,shot_idx) = nav_ima_phase_unwrapped(:,:,ch_idx,shot_idx) - nav_ima_phase_unwrapped(:,:,ch_idx,ref_shot_idx);
+            end
+            figure(6); montage(nav_ima_phase_unwrapped_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
+            
+            nav_ima_global_calibrated = bart('fft -i 3', nav_kspa_global_calibrated);
+            for shot_idx = 1:shot
+                nav_ima_global_calibrated_phase_diff(:,:,ch_idx,shot_idx) = angle(nav_ima_global_calibrated(:,:,ch_idx,shot_idx)) - angle(nav_ima_global_calibrated(:,:,ch_idx,ref_shot_idx));
+            end
+            figure(7); montage(nav_ima_global_calibrated_phase_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
+            
+            %--------------------------------------------------------------------------------------------------%
+            
+            % --------- Linear &GLOBAL phase errror estimation in image domain
+        end
+        
+        
+        for shot_idx = 1:shot
+            nav_ima_phase_unwrapped_diff(:,:,ch_idx,shot_idx) = nav_ima_phase_unwrapped(:,:,ch_idx,shot_idx) - nav_ima_phase_unwrapped(:,:,ch_idx,ref_shot_idx);
+        end
+        figure(6); montage(nav_ima_phase_unwrapped_diff(:,:,ch_idx,:),'displayrange',[-pi pi]); colormap jet
+        
+        
+        [X, Y] = meshgrid(-(kx/2-1):kx/2, -(ky/2-1):ky/2);
         fit_x(:,1) = X(:);
         fit_x(:,2) = Y(:);
         for shot_idx = 1:shot
 
-             fitting_nav_ima = exp(i * (nav_ima_global_calibrated_phase_diff(:,:,ch_idx,shot_idx)));  %use cpx --> don't need to worry about phase wrapping
+%              fitting_nav_ima = exp(i * (nav_ima_global_calibrated_phase_diff(:,:,ch_idx,shot_idx)));  %use cpx --> don't need to worry about phase wrapping
 
         %     %----------lsqcurvefit ------------- NOT WORKING WELL
         %     f = fitting_nav_ima(:);
@@ -98,7 +104,9 @@ function easy_rigidMotion_parameter_calculation(fn)
 
             options.Algorithm = 'trust-region-reflective';
             options.MaxFunEvals = 1000;
-            b0 = [0 0 global_phase_diff_initial(shot_idx)];
+%             b0 = [0 0 global_phase_diff_initial(shot_idx)];
+            b0 = [0 0 0];
+
             b = lsqnonlin(fun_b,b0,[], [], options);
 
             fitting_results_1d = zeros(kx * ky, 1);
@@ -162,5 +170,7 @@ function easy_rigidMotion_parameter_calculation(fn)
           figure(8); montage(fitted_nav_ima_phase(:,:,ch_idx,:),'displayrange',[-5*pi 5*pi]); colormap jet
 
     end
-    save(fn, 'nav_ima_phase_unwrapped_diff','fitted_nav_ima_phase', 'linear_phase_xy','global_phase','global_phase_diff_initial','-append');
+%     save(fn, 'nav_ima_phase_unwrapped_diff','fitted_nav_ima_phase', 'linear_phase_xy','global_phase','global_phase_diff_initial','-append');
+%         save(fn, 'nav_ima_phase_unwrapped_diff','fitted_nav_ima_phase', 'linear_phase_xy','global_phase','-append');
+
 end

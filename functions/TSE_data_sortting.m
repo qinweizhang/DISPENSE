@@ -121,12 +121,12 @@ MR_DPstiTSE.GridderNormalization;
 % MR_sense = MRsense(sense_ref_fn, raw_data_fn, coil_survey_fn);
 % MR_sense.Mask = 1;
 % MR_sense.MatchTargetSize = 1;
-% MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
-% MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+% % MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+% % MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
 % MR_sense.Perform;
-% % ----------------------end-----------------------
+% % % ----------------------end-----------------------
 % MR_DPstiTSE.Parameter.Recon.Sensitivities = MR_sense;
-% 
+% % 
 % MR_DPstiTSE.SENSEUnfold;  %no sense here 
  warning('Kerry: SENSE unfolder disabled for this case!'); MR_DPstiTSE.CombineCoils;
 

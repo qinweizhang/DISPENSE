@@ -1,7 +1,7 @@
 %==========DPsti-TSE nonrigid motion correction simulation============
 cd('/home/qzhang/lood_storage/divi/Users/qzhang/SoSND/SoSND/simulations/brain_test_data')
 clear; close all; clc
-load('test_data_09_24.mat')  %  test_data_09_24
+load('test_data_10_07.mat')  %  test_data_09_24
 
 %%  STEP1: generate phase error for every shot
 
@@ -10,11 +10,13 @@ load('test_data_09_24.mat')  %  test_data_09_24
 
 
 
-generate_phase_error = false;
+generate_phase_error = true;
 load_phase_error = ~generate_phase_error;
 
 
 if(generate_phase_error)
+    sh_dim = max(TSE.shot_matched) - min(TSE.shot_matched) + 1;
+    
     phase_error_3D = [];
     for shot = 1:sh_dim
         
@@ -67,7 +69,7 @@ phase_error_3D(find(isinf(phase_error_3D))) = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 close all
-LRT_nav_mask_enable = true;
+LRT_nav_mask_enable = false;
 
 
 load_default = true;
@@ -79,10 +81,11 @@ noiselevel = 0;
 image_corrected = zeros(size(im_ref));
 im_recon_direct = zeros(size(im_ref));
 simulate_ky_sense_2 = false;
+simulate_kz_sense_2 = false;
 
-ch_id = [3 5  6 10 15 20];
-recon_shot_range = 1:42;
-recon_x_range = 155; %130:170;
+ch_id = [1:13];
+recon_shot_range = 1:40;
+recon_x_range = 200; %130:170;
 for x = 1:length(recon_x_range)
     %% Set recon parameters
     
@@ -91,11 +94,11 @@ for x = 1:length(recon_x_range)
     %recon parameter------------------------------------------------
     pars = initial_msDWIrecon_Pars;
     
-    pars.method='LRT'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
+    pars.method='CG_SENSE_I'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
     
-    pars.CG_SENSE_I.lamda=2;
-    pars.CG_SENSE_I.nit=15;
-    pars.CG_SENSE_I.tol = 1e-20;
+    pars.CG_SENSE_I.lamda=0.1;
+    pars.CG_SENSE_I.nit=30;
+    pars.CG_SENSE_I.tol = 1e-40;
     
     pars.POCS.Wsize = [10 10];  %no point to be bigger than navigator area
     pars.POCS.nit = 300;
@@ -140,7 +143,7 @@ for x = 1:length(recon_x_range)
         
     elseif(load_sparse_profile)
         %% sparse sampling pattern
-        sh_dim = 42;
+        sh_dim = 40;
         ky_labels = sparse_ky_profile + ceil(TSE.ky_dim/2); %0-->TSE.ky_dim/2
         kz_labels = sparse_kz_profile + ceil(TSE.kz_dim/2); %0-->TSE.ky_dim/2
         prof_per_shot = length(ky_labels)/sh_dim;
@@ -162,7 +165,7 @@ for x = 1:length(recon_x_range)
     figure(12);
     subplot(141); montage(ttt, 'displayrange',[]);xlabel('kz'); ylabel('ky'); title('sampling mask shot-by-shot');
     subplot(142); imagesc(sum(ttt,4), [0 2]); colormap jet; axis off; axis equal; xlabel('kz'); ylabel('ky'); title('sample times'); colorbar;
-    ttt = sum(bsxfun(@times, ttt, permute(1:42, [4 3 1 2])),4);
+    ttt = sum(bsxfun(@times, ttt, permute(1:40, [4 3 1 2])),4);
     subplot(143); imagesc(ttt, [0 sh_dim]); colormap jet; axis off; axis equal; xlabel('kz'); ylabel('ky'); title('smaple shot #'); colorbar;
     clear ttt;
     
@@ -208,6 +211,10 @@ for x = 1:length(recon_x_range)
     if(simulate_ky_sense_2)
         mask(:,1:2:end,:,:,:) = 0;
     end
+    if(simulate_kz_sense_2)
+        mask(:,:,1:2:end,:,:) = 0;
+    end
+    
     
     kspa_xyz = bsxfun(@times, fft3d(im_pe), mask);
     if(~isempty(LRT_nav_mask)) % for LRT separate navigator

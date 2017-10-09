@@ -17,6 +17,7 @@ if nargin==0 % default constructor
     a.numCoils = [];
     a.numShots = [];
     a.mask = [];
+    a.kspa_dim = [];
 
 else
     a.adjoint = 0;
@@ -26,6 +27,7 @@ else
     a.numCoils = coil_nr;
     a.numShots = shots_nr;
     a.mask = mask;
+    a.kspa_dim = [size(mask,1) size(mask,2)];
      
 end
 

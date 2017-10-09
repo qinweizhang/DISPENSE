@@ -13,10 +13,10 @@ P_for = @(x) bsxfun(@times, a.pe, x);                       %a.pe in [ny, nz, 1,
 
 
 
-if size(b,1)==prod(a.image_dim)*a.numCoils*a.numShots || numel(b)==prod(a.image_dim)
-    if a.adjoint
-        res=reshape(b,[a.image_dim(1),a.image_dim(2), a.numCoils,a.numShots]);
-    else
+if size(b,1)==prod(a.kspa_dim)*a.numCoils*a.numShots || numel(b)==prod(a.image_dim)
+    if a.adjoint %kspa --> ima
+        res=reshape(b,[a.kspa_dim(1),a.kspa_dim(2), a.numCoils,a.numShots]);
+    else %ima --> kspa
         res=reshape(b,[a.image_dim(1),a.image_dim(2)]);
     end
     
@@ -26,9 +26,9 @@ end
 
 
 
-if a.adjoint
+if a.adjoint  %kspa --> ima
     res=S_adj(P_adj(F_adj(res)));
-else
+else  %ima --> kspa
     res=F_for(P_for(S_for(res)));
     res=res.*a.mask;
     res = col(res);

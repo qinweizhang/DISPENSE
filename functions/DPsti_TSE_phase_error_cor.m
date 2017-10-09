@@ -33,6 +33,10 @@ assert(TSE.kx_dim >=  size(ima_k_spa_data,1));
 TSE.ky_dim = TSE.kyrange(2) - TSE.kyrange(1) + 1;  %max_ky * 2 + 1;
 TSE.kz_dim = TSE.kzrange(2) - TSE.kzrange(1) + 1;
 
+TSE.Ix_dim = TSE.Ixrange(2) - TSE.Ixrange(1) + 1;
+TSE.Iy_dim = TSE.Iyrange(2) - TSE.Iyrange(1) + 1;  %max_ky * 2 + 1;
+TSE.Iz_dim = TSE.Izrange(2) - TSE.Izrange(1) + 1;
+
 %% Preprocessing on kspace data for b=0
 disp('Preprocessing on kspace data for b=0');
 if(isempty(pars.b0_shots))
@@ -63,7 +67,7 @@ tic
 % %sense mask || now it should be calculated outside and stored in TSE structure
 if(isfield(TSE, 'sense_mask'))
     if(isempty(TSE.sense_mask)) %if empty calc again
-        dim = [TSE.ky_dim TSE.ky_dim TSE.kz_dim];
+        dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
         os = [1, 1, 1];
         sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
         rs_command = sprintf('resize -c 0 %d', TSE.kx_dim);
@@ -73,10 +77,10 @@ if(isfield(TSE, 'sense_mask'))
         clear sense_map_temp;
     end
 else %if not exist, calc again
-    dim = [TSE.ky_dim TSE.ky_dim TSE.kz_dim];
+    dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
     os = [1, 1, 1];
     sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
-    rs_command = sprintf('resize -c 0 %d', TSE.kx_dim);
+    rs_command = sprintf('resize -c 0 %d', TSE.Ix_dim);
     sense_map_temp = bart(rs_command, sense_map_temp);
     
     TSE.sense_mask = abs(sense_map_temp(:,:,:,1 ))>0;
@@ -86,7 +90,7 @@ end
 %sense maps
 if(length(pars.enabled_ch)==1) %one channel
     warning('Kerry: This is one channel recon!')
-    sense_map_3D = ones(TSE.kx_dim,TSE.ky_dim,TSE.kz_dim);
+    sense_map_3D = ones(TSE.Ix_dim,TSE.Iy_dim,TSE.Iz_dim);
     
     
 else
@@ -108,10 +112,10 @@ else
         %TODO
     elseif(strcmp(pars.sense_map, 'external'))
         if(isempty(TSE_sense_map))
-            dim = [TSE.ky_dim TSE.ky_dim TSE.kz_dim];
+            dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
             os = [1, 1, 1];
             TSE_sense_map = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
-            rs_command = sprintf('resize -c 0 %d', TSE.kx_dim);
+            rs_command = sprintf('resize -c 0 %d', TSE.Ix_dim);
             TSE_sense_map = bart(rs_command, TSE_sense_map);
         end
         sense_map_3D = normalize_sense_map(TSE_sense_map(:,:,:,pars.enabled_ch ))+eps;
@@ -128,6 +132,9 @@ if(exist('sense_map_3D','var')&&exist('im_b0_ch_by_ch','var'))
     subplot(121); montage(abs(im_b0_ch_by_ch(:,:,slice,:)),'displayrange',[]); title('Check if they are match!'); xlabel('channel-by-channel');
     subplot(122); montage(abs(sense_map_3D(:,:,slice,:)),'displayrange',[]); xlabel('sense');
 end
+
+assert(sum(size(sense_map_3D)==[TSE.Ix_dim TSE.Iy_dim TSE.Iz_dim length(pars.enabled_ch)])==4,'SENSE map size is wrong!')
+
 toc
 
 %% Preprocessing on kspace data for nonb0
@@ -139,7 +146,7 @@ else
     nonb0_shots_range = pars.nonb0_shots;
 end
 
-assert(sum(ismember(nonb0_shots_range, b0_shots_range))==0,'non_b0 shots overlap with b0 shots!')
+% assert(sum(ismember(nonb0_shots_range, b0_shots_range))==0,'non_b0 shots overlap with b0 shots!')
 
 % nonb0_shots_range = b0_shots_range; %backdoor: for calculating b0 images
 
@@ -170,15 +177,9 @@ toc
 disp('Preprocessing on phase error data');
 tic
 
-if(exist('kspa_x_yz','var'))
-    [kx, ky, kz, ~, nshot] = size(kspa_x_yz);
-else
-    [kx, ky, kz, ~, nshot] = size(kspa_xyz);
-end
-
 %ref shot: when k0 being acquired
 k0_idx = [floor(TSE.kx_dim/2)+1 floor(TSE.ky_dim/2)+1 floor(TSE.kz_dim/2)+1];
-for sh =1:nshot
+for sh =1:length(nonb0_shots_range)
     if(exist('kspa_xyz','var'))
         if(abs(kspa_xyz(k0_idx(1),k0_idx(2),k0_idx(3), 1, sh))>0)
             ref_shot = sh;
@@ -198,6 +199,11 @@ nav_im_1 = double(nav_data(:,:,:,nonb0_shots_range)); %b0_shots_range for b0 cor
 nav_im_1_diff = bsxfun(@rdivide, nav_im_1, nav_im_1(:,:,:,ref_shot)); %difference with the ref
 nav_im_1_diff(find(isnan(nav_im_1_diff)))=0; nav_im_1_diff(find(isinf(nav_im_1_diff)))=0;
 
+%set nav_im_1_diff phase to 0 for unreliable locations (optional and careful)
+% unreliable_location = find(abs(nav_im_1)<1e4);
+% nav_im_1_diff(unreliable_location)=abs(nav_im_1_diff(unreliable_location)); 
+
+
 for sh = 1:size(nav_im_1_diff,4)
     nav_im_1_diff_phase_sm = smooth3(permute(angle(nav_im_1_diff(:,:,:,sh)),[3 1 2]),'box',pars.nav_phase_sm_kernel);
     nav_im_1_diff_phase_sm = permute(nav_im_1_diff_phase_sm, [2 3 1]);
@@ -216,28 +222,28 @@ if(kspace_interpo)
     assert(size(nav_im_1_diff_sm, 4)==nshot);
     
     nav_k_1 = bart('fft 7', nav_im_1_diff_sm);
-    resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', ky, ky, kz, nshot); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
+    resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Iy_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range)); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
     nav_k_1 = bart(resize_command, nav_k_1);
     nav_im_2 = bart('fft -i 7', nav_k_1);
     
-    resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', kx, ky, kz, nshot);
+    resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range));
     nav_im_2 = bart(resize_command_2, nav_im_2);
     
 else %linear intopolation
     [~, nav_y, nav_z, nav_shots] = size(nav_im_1_diff_sm);
-    nav_im_2 = zeros(kx, ky, kz, nav_shots);
-    padding_size = kx-ky;
+    nav_im_2 = zeros(TSE.Ix_dim, TSE.Iy_dim,  TSE.Iz_dim, length(nonb0_shots_range));
+    padding_size = TSE.Ix_dim - TSE.Iy_dim;
     padding_left = ceil(padding_size/2);
-    kx_loc_range = padding_left+1:padding_left+ky;
+    x_loc_range = padding_left+1:padding_left+TSE.Iy_dim;
     
-    if kz==1 %2D case; use imresize
-        nav_im_2(kx_loc_range,:,:,:) = imresize(nav_im_1_diff_sm,ky./size(nav_im_1_diff_sm,2));
+    if TSE.Iz_dim==1 %2D case; use imresize
+        nav_im_2(x_loc_range,:,:,:) = imresize(nav_im_1_diff_sm, TSE.Iy_dim./size(nav_im_1_diff_sm,2));
     else % 3D use interp3
         
         for sh=1:nav_shots
-            [X, Y, Z] = meshgrid(linspace(1,ky,nav_y),linspace(1,ky,nav_y),linspace(1,kz,nav_z) );  %corrdinate for original locations
-            [Xq,Yq,Zq] = meshgrid(1:ky,1:ky,1:kz );  %corrdinate for intoplated locations
-            nav_im_2(kx_loc_range,:,:,sh) = interp3(X,Y,Z,squeeze(nav_im_1_diff_sm(:,:,:,sh)),Xq,Yq,Zq);
+            [X, Y, Z] = meshgrid(linspace(1,TSE.Iy_dim,nav_y),linspace(1,TSE.Iy_dim,nav_y),linspace(1,TSE.Iz_dim,nav_z) );  %corrdinate for original locations
+            [Xq,Yq,Zq] = meshgrid(1:TSE.Iy_dim,1:TSE.Iy_dim,1:TSE.Iz_dim );  %corrdinate for intoplated locations
+            nav_im_2(x_loc_range,:,:,sh) = interp3(X,Y,Z,squeeze(nav_im_1_diff_sm(:,:,:,sh)),Xq,Yq,Zq);
         end
     end
     
@@ -256,15 +262,17 @@ figure(5);
 immontage4D(angle(phase_error_3D),[-pi pi]); colormap jet; title('phase error maps int.')
 xlabel('shot #'); ylabel('slice locations');
 
+assert(sum(size(phase_error_3D)==[TSE.Ix_dim TSE.Iy_dim TSE.Iz_dim length(nonb0_shots_range)])==4,'Phase Error map size is wrong!')
 
 toc
 %% msDWI recon
 disp('recon');
-image_corrected = zeros(kx, ky, kz);
+image_corrected = zeros(TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim);
 tic;
-if (kz>1)
+if (TSE.Iz_dim>1)
     %% 3D recon
-    recon_x = [100: 240]; %pars.recon_x_locs;
+    recon_x = [96: 288]; %pars.recon_x_locs;
+%     recon_x = 200
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);
@@ -281,7 +289,7 @@ if (kz>1)
         
         %display
         figure(101);
-        subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0');
+        subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0'); xlabel(['x loc: ',num2str(recon_x_loc)]);
         subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
         subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');
         
@@ -290,10 +298,9 @@ if (kz>1)
         
     end
     
-    toc;
     
     %display
-    if(0) %big screen
+    if(1) %big screen
         figure(109);
         subplot(141); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
         subplot(142); montage(permute(abs(im_nonb0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
@@ -317,5 +324,5 @@ else
     
     
 end
-
+toc
 end
