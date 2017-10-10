@@ -88,34 +88,7 @@ end
 
 
 disp('-finished- ');
-%% -----BART recon -------%
-%{ 
-disp(' Spiral NUFFT recon (BART)...')
-data_fn = 'data_Sc14_3D.mat';
-trj_fn = 'traj_Sc25_26_27_for_Sc14.mat';
 
-%======recon parameters ======%
-bart_recon.ignor_kz = 0;  % 1for yes. 0 for no
-bart_recon.diffusion_nr = 1;
-bart_recon.skip_point =0;
-bart_recon.end_point = [];
-bart_recon.recon_dim = [26 26 10];
-bart_recon.trj_scale_dim = [16 16 5];
-bart_recon.shot_nr = 1;
-bart_recon.nsa_nr = 1;
-bart_recon.data_fn = data_fn;
-bart_recon.sense_ref = sense_ref_fn;
-bart_recon.coil_survey = coil_survey_fn;
-bart_recon.update_SENSE_map = 0;
-bart_recon.PICS = true;
-bart_recon.sense_calc_method = 'external'; %'ecalib' or 'external'
-%========end==================%
-[reco_pics, igrid, igrid_rss] = bart_nufft_recon(data_fn, trj_fn, bart_recon);
- 
-figure(204); montage(permute(abs(reco_pics),[1 2 4 3]),'displayrange',[])
-figure(205); montage(permute(angle(reco_pics),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet
-save(data_fn, 'reco_pics','igrid','igrid_rss','-append');
-%}
 %% TSE data sorting and default recon
 close all; clc
 disp(' TSE data sorting and default recon...')
@@ -155,10 +128,10 @@ pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-
+pars.recon_x_locs = 96:288;
 pars.enabled_ch = [1: 13];
 pars.b0_shots = []; %[] means first dynamic
-pars.recon_x_locs = 1:160;
+
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
@@ -187,9 +160,8 @@ clear sense_map_temp;
 
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
-for d = 1:1
+for d = 6:6
     pars.nonb0_shots = [1:40] + (d-1)*40;
-
     image_sense_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
     save('Sc4.mat','image_sense_corrected','-append');
 end

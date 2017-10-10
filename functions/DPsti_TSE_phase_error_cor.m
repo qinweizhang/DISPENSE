@@ -15,7 +15,9 @@
 
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 function image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars)
+
 %% Data check
+
 max_shot = max(TSE.shot_matched);
 assert(max_shot == size(nav_data, 4));
 assert(TSE.ch_dim == size(TSE_sense_map, 4)||isempty(TSE_sense_map));
@@ -38,6 +40,7 @@ TSE.Iy_dim = TSE.Iyrange(2) - TSE.Iyrange(1) + 1;  %max_ky * 2 + 1;
 TSE.Iz_dim = TSE.Izrange(2) - TSE.Izrange(1) + 1;
 
 %% Preprocessing on kspace data for b=0
+
 disp('Preprocessing on kspace data for b=0');
 if(isempty(pars.b0_shots))
     b0_shots_range = 1:shots_per_dyn; %by default, the first dynamic
@@ -60,7 +63,43 @@ clear kspa_b0_combshot
 
 toc;
 
+%% Preprocessing on kspace data for nonb0
+
+disp('Preprocessing on kspace data for nonb0');
+
+if(isempty(pars.nonb0_shots))
+    nonb0_shots_range = 1: shots_per_dyn;
+else
+    nonb0_shots_range = pars.nonb0_shots;
+end
+
+% assert(sum(ismember(nonb0_shots_range, b0_shots_range))==0,'non_b0 shots overlap with b0 shots!')
+
+% nonb0_shots_range = b0_shots_range; %backdoor: for calculating b0 images
+
+tic;
+
+kspa_xyz = sort_k_spa_sh_by_sh(ima_k_spa_data, nonb0_shots_range, TSE, pars);
+
+kk = sum(kspa_xyz, 5)./ sum(abs(kspa_xyz)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zero average
+kk(find(isnan(kk)))=0; kk(find(isinf(kk)))=0;
+
+im_nonb0_ch_by_ch=ifft3d(kk);
+im_nonb0=sqrt(sum(abs(im_nonb0_ch_by_ch).^2, 4));
+figure(2); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
+clear kk pp
+
+%to hybrid space for 3D cases
+if(TSE.kz_dim>1)
+    clear kspa_x_yz;
+    kspa_x_yz = ifft1d(kspa_xyz);
+    clear kspa_xyz
+end
+
+toc
+
 %% Preprocessing on sense data
+
 disp('Preprocessing on sense data');
 tic
 
@@ -108,17 +147,18 @@ else
         sense_map_3D = ecalib_sense_map_3D;
         
         
-        %match the size of TSE_sens_map to kspa_xyz
-        %TODO
     elseif(strcmp(pars.sense_map, 'external'))
         if(isempty(TSE_sense_map))
             dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
             os = [1, 1, 1];
-            TSE_sense_map = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
+            [TSE_sense_map,TSE.sense_Psi]  = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
             rs_command = sprintf('resize -c 0 %d', TSE.Ix_dim);
             TSE_sense_map = bart(rs_command, TSE_sense_map);
         end
+        
         sense_map_3D = normalize_sense_map(TSE_sense_map(:,:,:,pars.enabled_ch ))+eps;
+        sense_Psi = TSE.sense_Psi(pars.enabled_ch, pars.enabled_ch);
+        
     else
         error('sense map source not indentified.')
     end
@@ -137,39 +177,6 @@ assert(sum(size(sense_map_3D)==[TSE.Ix_dim TSE.Iy_dim TSE.Iz_dim length(pars.ena
 
 toc
 
-%% Preprocessing on kspace data for nonb0
-disp('Preprocessing on kspace data for nonb0');
-
-if(isempty(pars.nonb0_shots))
-    nonb0_shots_range = 1: shots_per_dyn;
-else
-    nonb0_shots_range = pars.nonb0_shots;
-end
-
-% assert(sum(ismember(nonb0_shots_range, b0_shots_range))==0,'non_b0 shots overlap with b0 shots!')
-
-% nonb0_shots_range = b0_shots_range; %backdoor: for calculating b0 images
-
-tic;
-
-kspa_xyz = sort_k_spa_sh_by_sh(ima_k_spa_data, nonb0_shots_range, TSE, pars);
-
-kk = sum(kspa_xyz, 5)./ sum(abs(kspa_xyz)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zero average
-kk(find(isnan(kk)))=0; kk(find(isinf(kk)))=0;
-
-im_nonb0_ch_by_ch=ifft3d(kk);
-im_nonb0=sqrt(sum(abs(im_nonb0_ch_by_ch).^2, 4));
-figure(2); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
-clear kk pp
-
-%to hybrid space for 3D cases
-if(TSE.kz_dim>1)
-    clear kspa_x_yz;
-    kspa_x_yz = ifft1d(kspa_xyz);
-    clear kspa_xyz
-end
-
-toc
 
 
 
@@ -271,8 +278,8 @@ image_corrected = zeros(TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim);
 tic;
 if (TSE.Iz_dim>1)
     %% 3D recon
-%     recon_x = [96: 288]; %pars.recon_x_locs;
-    recon_x = 200
+    recon_x = pars.recon_x_locs;
+%     recon_x = 124;
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);
@@ -282,6 +289,29 @@ if (TSE.Iz_dim>1)
         sense_map = permute(sense_map_3D(recon_x_loc,:,:,:),[2 3 4 1]);
         phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
         %========================================================================
+        
+        % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+        if(exist('sense_Psi', 'var'))
+            L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+            L_inv = inv(L);
+            for c = 1:size(sense_Psi,1)
+                %recombine sense map
+                sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
+                %recombine kspa map
+                kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
+            end
+            figure(401);
+            subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
+            subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
+            
+            sense_map =  sense_map_orthocoil;
+            kspa = kspa_orthocoil;
+            clear sense_map_orthocoil kspa_orthocoil
+            %renormalize sense
+            sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
+        end
+        % ========================================================================================
+        
         
         image_corrected(recon_x_loc,:,:) = msDWIrecon(kspa, sense_map, phase_error, pars.msDWIrecon);
         
@@ -313,7 +343,34 @@ if (TSE.Iz_dim>1)
 else
     %% 2D recon: remove 3rd dimension
     
-    image_corrected = msDWIrecon(permute(kspa_xyz,[1 2 4 5 3]), squeeze(sense_map_3D), phase_error_3D, pars.msDWIrecon);
+    
+    ksap = permute(kspa_xyz,[1 2 4 5 3]);
+    sense_map = squeeze(sense_map_3D);
+    
+    % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+    if(exist('sense_Psi', 'var'))
+        L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+        L_inv = inv(L);
+        for c = 1:size(sense_Psi,1)
+            %recombine sense map
+            sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
+            %recombine kspa map
+            kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
+        end
+        figure(401);
+        subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
+        subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
+        
+        sense_map =  sense_map_orthocoil;
+        kspa = kspa_orthocoil;
+        clear sense_map_orthocoil kspa_orthocoil
+        %renormalize sense
+        sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
+    end
+    % ========================================================================================
+    
+    
+    image_corrected = msDWIrecon(ksap, sense_map, phase_error_3D, pars.msDWIrecon);
     %     image_corrected = msDWIrecon(permute(kspa_all(:,:,:,:,[1:length(b0_shots_range)]),[1 2 4 5 3]), squeeze(sense_map_3D), phase_error_3D, pars.msDWIrecon);
     %display
     figure(120);
