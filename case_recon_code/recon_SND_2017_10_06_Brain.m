@@ -128,15 +128,15 @@ pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-pars.recon_x_locs = 96:288;
-pars.enabled_ch = [1: 13];
+pars.recon_x_locs = 96:258;
+pars.enabled_ch = [7: 13];
 pars.b0_shots = []; %[] means first dynamic
 
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
 pars.msDWIrecon.CG_SENSE_I.lamda=1e-2;
-pars.msDWIrecon.CG_SENSE_I.nit=60;
+pars.msDWIrecon.CG_SENSE_I.nit=40;
 pars.msDWIrecon.CG_SENSE_I.tol = 1e-10;
 pars.msDWIrecon.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
 pars.msDWIrecon.POCS.nit = 50;
@@ -162,7 +162,7 @@ clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sort
 
 for d = 6:6
     pars.nonb0_shots = [1:40] + (d-1)*40;
-    image_sense_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
+    image_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
     save('Sc4.mat','image_sense_corrected','-append');
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option

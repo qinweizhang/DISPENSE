@@ -1,12 +1,33 @@
-function nav_im_recon_nufft = NUFFT_3D_recon(nav_k_spa_data,trj_fn,recon_par,nav_sense_map)
-
-%OUTPUT
+% OUTPUT
 %
 % nav_im_recon_nufft: reconed navigator image in size of [x,y,z,ch,shot]
+%
+% 
+% INPUT
+% 
+% nav_k_spa_data
+% trj_fn
+% recon_par
+% nav_sense_map
+% varargin{1} 
+% varargin{2:3} 
 
-load(trj_fn); 
 
-% display singal quality
+function nav_im_recon_nufft = NUFFT_3D_recon(nav_k_spa_data,trj_fn,recon_par,nav_sense_map, varargin)
+
+
+load(trj_fn);
+if( nargin==5 )
+    nav_sense_Psi = double(varargin{1});
+elseif(nargin >5 )
+    assert(nargin == 7, 'Input both Offcenter and FOV in mm');
+    nav_sense_Psi = varargin{1};
+    Offcenter_xy = varargin{2};
+    FOV_xy = varargin{3};
+end
+
+%% display singal quality
+
 dist = abs(trj_meas_kx + i .* trj_meas_ky);
 dist = abs(dist + i.*trj_meas_kz);
 figure(16); plot(dist./max(abs(dist(:))));
@@ -21,10 +42,8 @@ end
 
 selected_point = recon_par.skip_point+1:recon_par.end_point;
 
-
-
-
 %% Scale trajectory
+
 trj_meas_kx_t = squeeze(trj_meas_kx(selected_point,1));
 trj_meas_ky_t = squeeze(trj_meas_ky(selected_point,1));
 trj_meas_kz_t = squeeze(trj_meas_kz(selected_point,1));
@@ -66,6 +85,7 @@ trj_nufft = trj_nufft';
 clear im_recon_nufft nav_im_recon_nufft
 
 %% recon
+
 if(recon_par.recon_all_shot)
     end_shot_idx = size(nav_k_spa_data,3);
 else
@@ -74,23 +94,70 @@ end
 for shot_nr = 1: end_shot_idx
     shot_nr
     
-    sig_kspa = nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr);
+    sig_kspa = double(nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr));
+    
+    %============xy offset compensation: based on trajectory======================================================
+    if(exist('Offcenter_xy','var'))
+        %---x offset
+        if(Offcenter_xy(1)~=0)
+            ima_offcenter_FOV_ratio = -1 * Offcenter_xy(1)/FOV_xy(1);
+            kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+            kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
+            kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate; 
+            sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+        end
+         %---y offset
+        if(Offcenter_xy(2)~=0)
+             ima_offcenter_FOV_ratio = -1 * Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
+            kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+            kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
+            kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate; 
+            sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+
+        end
+    end
+    %===========================================================================================================
+    
     
     if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
+        
+        % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+        if(exist('nav_sense_Psi','var'))
+            if(~isempty(nav_sense_Psi))
+                L = chol(nav_sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+                L_inv = inv(L);
+                for c = 1:size(nav_sense_Psi,1)
+                    %recombine sense map
+                    sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute(L_inv(c,:),[1 3 4 2])), 4);
+                    %recombine kspa map
+                    kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
+                end
+                figure(401);
+                s = round(size(nav_sense_map,3)/2);
+                subplot(121); montage(abs(nav_sense_map(:,:,s,:)),'displayrange',[]); title('originial SENSE map')
+                subplot(122); montage(abs(sense_map_orthocoil(:,:,s,:)),'displayrange',[]); title('Orthogonal SENSE map')
+                
+                nav_sense_map =  sense_map_orthocoil;
+                sig_kspa = kspa_orthocoil;
+                clear sense_map_orthocoil kspa_orthocoil
+                %renormalize sense
+                nav_sense_map = normalize_sense_map(nav_sense_map);
+            end
+        end
+        % =================================================================================================
+        
         sig_nufft = col(double(sig_kspa));
         
-%         nav_sens_map = conj(nav_sens_map);
-        A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sense_map,6);
+        A=nuFTOperator(trj_nufft,recon_par.recon_dim,double(nav_sense_map),6);
         
         % simple inverse
         nav_im_recon_nufft_direct_inverse = A'*sig_nufft;
         figure(702); montage(permute(abs(nav_im_recon_nufft_direct_inverse), [1 2 4 3]),'displayrange',[]); title('direct inverse');
-        
-        
+
         
         %call CG-SENSE with L2-norm regularization
         nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,@L2Norm,recon_par.lamda,'maxit',recon_par.interations,'tol', 1e-10);
-%                 nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
+        %                 nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
         
     else %ch by ch recon
         
@@ -124,8 +191,8 @@ try
         subplot(122); montage(permute(squeeze(abs(nav_im_recon_nufft)), [2 3 4 1]),'displayrange',[]); title('all slices rss'); xlabel('S'); ylabel('P')
         
         figure(38);
-        subplot(121); montage(permute(squeeze(angle(nav_im_recon_nufft)), [1 2 4 3]),'displayrange',[-pi pi]); title('phase all slices'); xlabel('P'); ylabel('M'); colormap jet; 
-        subplot(122); montage(permute(squeeze(angle(nav_im_recon_nufft)), [2 3 4 1]),'displayrange',[-pi pi]); title('phase all slices'); xlabel('S'); ylabel('P'); colormap jet; 
+        subplot(121); montage(permute(squeeze(angle(nav_im_recon_nufft)), [1 2 4 3]),'displayrange',[-pi pi]); title('phase all slices'); xlabel('P'); ylabel('M'); colormap jet;
+        subplot(122); montage(permute(squeeze(angle(nav_im_recon_nufft)), [2 3 4 1]),'displayrange',[-pi pi]); title('phase all slices'); xlabel('S'); ylabel('P'); colormap jet;
         
     else
         

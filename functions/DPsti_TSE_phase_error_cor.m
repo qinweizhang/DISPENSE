@@ -279,7 +279,7 @@ tic;
 if (TSE.Iz_dim>1)
     %% 3D recon
     recon_x = pars.recon_x_locs;
-%     recon_x = 124;
+    recon_x = 124;
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);

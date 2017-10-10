@@ -50,24 +50,28 @@ if strcmp(pars.method, 'CG_SENSE_I')
     phase_error = normalize_sense_map(phase_error); %miss use normalized_sense_map function to normalized phase_error map
     mask = abs(kspa) > 0;
     
-    %scale k space incase they are ununiformly sampled; As we are min(||kspace-EI||^2),  but now kspace and I have different energy,this is
-    %not good.
-    sample_times = sum(mask,4);
-    kspa = bsxfun(@rdivide, kspa, sample_times); 
-    kspa(find(isnan(kspa)))=0; kspa(find(isinf(kspa)))=0; 
-    
-    
-    b = col(kspa);
-    
-    
-    A=FPSoperator(sense_map, phase_error, [ky_dim kz_dim], nc, ns, mask);
-    %         image_corrected = A'*b;  %direct inverse
-    lamda =  pars.CG_SENSE_I.lamda;
-    maxit =  pars.CG_SENSE_I.nit;
-    tol =   pars.CG_SENSE_I.tol;
-    
-    image_corrected_unfiltered=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', tol);
-    image_corrected = filt_perifiral_kspa(image_corrected_unfiltered, squeeze(sum(mask(:,:,1,:),4)));
+    if((sum(abs(sense_map(:)))>0)&&(sum(abs(phase_error(:)))>0))
+        %scale k space incase they are ununiformly sampled; As we are min(||kspace-EI||^2),  but now kspace and I have different energy,this is
+        %not good.
+        sample_times = sum(mask,4);
+        kspa = bsxfun(@rdivide, kspa, sample_times);
+        kspa(find(isnan(kspa)))=0; kspa(find(isinf(kspa)))=0;
+        
+        
+        b = col(kspa);
+        
+        
+        A=FPSoperator(sense_map, phase_error, [ky_dim kz_dim], nc, ns, mask);
+        %         image_corrected = A'*b;  %direct inverse
+        lamda =  pars.CG_SENSE_I.lamda;
+        maxit =  pars.CG_SENSE_I.nit;
+        tol =   pars.CG_SENSE_I.tol;
+        
+        image_corrected_unfiltered=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', tol);
+        image_corrected = filt_perifiral_kspa(image_corrected_unfiltered, squeeze(sum(mask(:,:,1,:),4)));
+    else
+        image_corrected = zeros(ky_dim, kz_dim);
+    end
 elseif strcmp(pars.method, 'CG_SENSE_K')    
     %% KSPACE CG_SENSE TODO
     
