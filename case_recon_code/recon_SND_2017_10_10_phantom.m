@@ -1,9 +1,9 @@
 
 clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_04_SoSAD_phantom');
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_10_SND_phantom');
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_Sc16_17_18.mat';
+trj_save_fn = 'trj_Sc7.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'dp_04082017_1341243_2_2_wip_sc6_dpsti_sosad_linear-ppuV4.raw';
-sense_ref_fn = 'dp_04082017_1340473_1000_7_wip_senserefscanV4.raw';
-coil_survey_fn  = 'dp_04082017_1336408_1000_2_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_10102017_1915342_11_2_wip_sc5_3d_snd_brain_4bV4.raw';
+sense_ref_fn = 'sn_10102017_1855003_1000_10_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_10102017_1803167_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_Sc9_10_11_for_Sc2.mat';
+trj_mat_fn = 'trj_Sc7.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -32,8 +32,8 @@ for dyn = 1:dyn_nr
     dyn
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [36 36 13];  
-    recon_par.recon_dim  = [36 36 13];
+    recon_par.acq_dim = [32 32 14];  
+    recon_par.recon_dim  = [32 32 14];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = []; %or []: till the end;
@@ -43,6 +43,7 @@ for dyn = 1:dyn_nr
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
+    recon_par.sense_os = [1 3];  %oversampling in x and y: control sense FOV
     recon_par.data_fn = data_fn;
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
@@ -56,7 +57,7 @@ for dyn = 1:dyn_nr
     
     nav_sense_Psi = [];
     if(recon_par.update_SENSE_map)
-        [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
+        [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method, recon_par.sense_os);
     end
     
     if(recon_par.sense_map_recon == 0)
@@ -64,10 +65,10 @@ for dyn = 1:dyn_nr
     end
     nav_sense_map = normalize_sense_map(nav_sense_map);
     
-    offcenter_xy = [-4 6]; 
-    FOV_xy = [220 100];
+    offcenter_xy = [-35 0]; 
+    FOV_xy = [150 150];
     
-    nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
+    nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, [],offcenter_xy, FOV_xy);
     nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));

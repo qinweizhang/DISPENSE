@@ -86,6 +86,30 @@ clear im_recon_nufft nav_im_recon_nufft
 
 %% recon
 
+% ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+if(exist('nav_sense_Psi','var'))
+    if(~isempty(nav_sense_Psi))
+        L = chol(nav_sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+        L_inv = inv(L);
+        for c = 1:size(nav_sense_Psi,1)
+            %recombine sense map
+            sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute(L_inv(c,:),[1 3 4 2])), 4);
+        end
+        figure(401);
+        s = round(size(nav_sense_map,3)/2);
+        subplot(121); montage(abs(nav_sense_map(:,:,s,:)),'displayrange',[]); title('originial SENSE map')
+        subplot(122); montage(abs(sense_map_orthocoil(:,:,s,:)),'displayrange',[]); title('Orthogonal SENSE map')
+        
+        nav_sense_map =  sense_map_orthocoil;
+        clear kspa_orthocoil
+        %renormalize sense
+        nav_sense_map = normalize_sense_map(nav_sense_map);
+    end
+end
+% =================================================================================================
+
+        
+
 if(recon_par.recon_all_shot)
     end_shot_idx = size(nav_k_spa_data,3);
 else
@@ -100,7 +124,7 @@ for shot_nr = 1: end_shot_idx
     if(exist('Offcenter_xy','var'))
         %---x offset
         if(Offcenter_xy(1)~=0)
-            ima_offcenter_FOV_ratio = -1 * Offcenter_xy(1)/FOV_xy(1);
+            ima_offcenter_FOV_ratio = Offcenter_xy(1)/FOV_xy(1);
             kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
             kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
             kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate; 
@@ -108,7 +132,7 @@ for shot_nr = 1: end_shot_idx
         end
          %---y offset
         if(Offcenter_xy(2)~=0)
-             ima_offcenter_FOV_ratio = -1 * Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
+            ima_offcenter_FOV_ratio = Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
             kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
             kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
             kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate; 
@@ -121,27 +145,17 @@ for shot_nr = 1: end_shot_idx
     
     if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
         
-        % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+        % ========Orthogonal data after SENSE maps orthogonal ============================================
         if(exist('nav_sense_Psi','var'))
             if(~isempty(nav_sense_Psi))
-                L = chol(nav_sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-                L_inv = inv(L);
+
                 for c = 1:size(nav_sense_Psi,1)
-                    %recombine sense map
-                    sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute(L_inv(c,:),[1 3 4 2])), 4);
-                    %recombine kspa map
+                    %recombine kspa 
                     kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
                 end
-                figure(401);
-                s = round(size(nav_sense_map,3)/2);
-                subplot(121); montage(abs(nav_sense_map(:,:,s,:)),'displayrange',[]); title('originial SENSE map')
-                subplot(122); montage(abs(sense_map_orthocoil(:,:,s,:)),'displayrange',[]); title('Orthogonal SENSE map')
-                
-                nav_sense_map =  sense_map_orthocoil;
+
                 sig_kspa = kspa_orthocoil;
-                clear sense_map_orthocoil kspa_orthocoil
-                %renormalize sense
-                nav_sense_map = normalize_sense_map(nav_sense_map);
+                clear  kspa_orthocoil
             end
         end
         % =================================================================================================

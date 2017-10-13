@@ -178,20 +178,21 @@ im_S2_ksp = squeeze(k_spa_S2_data_phase_NSA);
 clear im_M1_ksp_phase_unwrap im_M2_ksp_phase_unwrap im_P1_ksp_phase_unwrap im_P2_ksp_phase_unwrap im_S1_ksp_phase_unwrap im_S2_ksp_phase_unwrap
 
 sel_ch = [1:ch_nr_m];
-% sel_ch = [1:2 4:7 9 11 13:27 29:34]
+% sel_ch =  [1:17 19:27]
 for ch=1:length(sel_ch)
     im_M1_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_M1_ksp(:,sel_ch(ch),:))));
     im_M2_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_M2_ksp(:,sel_ch(ch),:))));
 end
 
 sel_ch = [1:ch_nr_p];
+% sel_ch = [1 3:17 19:27]
 for ch=1:length(sel_ch)
     im_P1_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_P1_ksp(:,sel_ch(ch),:))));
     im_P2_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_P2_ksp(:,sel_ch(ch),:))));
 end
 
 sel_ch = [1:ch_nr_s];
-% sel_ch = [2:4 6:21 23:34]
+% sel_ch = [1 3:24 27]
 for ch=1:length(sel_ch)
     im_S1_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_S1_ksp(:,sel_ch(ch),:))));
     im_S2_ksp_phase_unwrap(:,ch,:) = unwrap(squeeze(angle(im_S2_ksp(:,sel_ch(ch),:))));

@@ -43,6 +43,7 @@ for dyn = 1:dyn_nr
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
+    recon_par.sense_os = [1 1];  %oversampling in x and y: control sense FOV
     recon_par.data_fn = data_fn;
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
@@ -52,10 +53,11 @@ for dyn = 1:dyn_nr
     %========================  END  =========================
      if(~exist('nav_sense_map', 'var')&&recon_par.sense_map_recon)
         recon_par.update_SENSE_map = 1;
-    end
+     end
     
+    nav_sense_Psi = [];
     if(recon_par.update_SENSE_map)
-        nav_sense_map = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
+        [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method, recon_par.sense_os);
     end
     
     if(recon_par.sense_map_recon == 0)
@@ -63,8 +65,10 @@ for dyn = 1:dyn_nr
     end
     nav_sense_map = normalize_sense_map(nav_sense_map);
     
+    offcenter_xy = [-35 0]; 
+    FOV_xy = [150 150];
     
-    nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, (nav_sense_map));
+    nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, [],offcenter_xy, FOV_xy);
     nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));

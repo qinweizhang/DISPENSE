@@ -1,21 +1,21 @@
 
-clear;clc; close all;
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_08_04_SoSAD_phantom');
+clear; clc; close all
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_12_SND_rectum')
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_Sc16_17_18.mat';
-trajectory_measure_distance = 15; %in mm
+trj_save_fn = 'traj_for_Sc14.mat';
+trajectory_measure_distance = -15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
 
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'dp_04082017_1341243_2_2_wip_sc6_dpsti_sosad_linear-ppuV4.raw';
-sense_ref_fn = 'dp_04082017_1340473_1000_7_wip_senserefscanV4.raw';
-coil_survey_fn  = 'dp_04082017_1336408_1000_2_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_12102017_1955147_14_2_wip_dpsti-tseV4.raw';
+sense_ref_fn = 'sn_12102017_1948596_1000_15_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_12102017_1948256_1000_10_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_Sc9_10_11_for_Sc2.mat';
+trj_mat_fn = 'traj_for_Sc14.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -25,15 +25,18 @@ disp('-finished- ');
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
 close all;
-[kx_length, ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
+[kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
-nav_im_recon_nufft = [];
-for dyn = 1:dyn_nr
+offcenter_xy = [0 0]; 
+FOV_xy = [400 400];
+    
+% nav_im_recon_nufft = [];
+for dyn = 1:1
     dyn
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [36 36 13];  
-    recon_par.recon_dim  = [36 36 13];
+    recon_par.acq_dim = [22 22 18];  
+    recon_par.recon_dim  = [22 22 18];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = []; %or []: till the end;
@@ -43,6 +46,7 @@ for dyn = 1:dyn_nr
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
+    recon_par.sense_os = [1 FOV_xy(1)/FOV_xy(2)];  %oversampling in x and y: control sense FOV
     recon_par.data_fn = data_fn;
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
@@ -54,9 +58,8 @@ for dyn = 1:dyn_nr
         recon_par.update_SENSE_map = 1;
      end
     
-    nav_sense_Psi = [];
     if(recon_par.update_SENSE_map)
-        [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method);
+        [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method, recon_par.sense_os);
     end
     
     if(recon_par.sense_map_recon == 0)
@@ -64,18 +67,20 @@ for dyn = 1:dyn_nr
     end
     nav_sense_map = normalize_sense_map(nav_sense_map);
     
-    offcenter_xy = [-4 6]; 
-    FOV_xy = [220 100];
-    
+    if(~exist('nav_sense_Psi','var'))
+        nav_sense_Psi = [];
+    end
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
-    nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
+    nav_im_recon_nufft(:,:,:,:,:,dyn) = nav_im_recon_nufft_1dyn;
+    save Sc05_2.mat nav_im_recon_nufft -append
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
-figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft(:,:,:,:,:,1))),[-pi pi]); colormap jet; 
-figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft(:,:,:,:,:,1))),[]); 
+dyn = 1;
+figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft(:,:,:,:,:,dyn))),[-pi pi]); colormap jet; 
+figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft(:,:,:,:,:,dyn))),[]); 
 phase_diff = angle(squeeze(bsxfun(@times,  nav_im_recon_nufft, exp(-1i*angle(nav_im_recon_nufft(:,:,:,1,1,:))))));
-figure(803); immontage4D(squeeze(phase_diff(:,:,:,:,1)),[-pi pi]); colormap jet;
+figure(803); immontage4D(squeeze(phase_diff(:,:,:,:,dyn)),[-pi pi]); colormap jet;
 
 if(recon_par.channel_by_channel)
     nav_im_ch_by_ch = nav_im_recon_nufft_1dyn;
