@@ -34,7 +34,6 @@ str = sprintf('SENSE: %1.2f %1.2f %1.2f', r.Parameter.Scan.SENSEFactor(1), r.Par
 disp(str);
 
 
-
 MR_sense = MRsense(s, r, survey);
 MR_sense.Mask = 1;
 MR_sense.Smooth = 1;
@@ -90,16 +89,20 @@ if(rs == 1)
     sens_map = sens_map(:,:,2,:);
 end
 
-% figure(711);
-% subplot(211);
-% immontage4D(abs(sens_map)); title('sens maps (mag)'); xlabel('channels'); ylabel('slices');
-% subplot(212);
-% immontage4D(angle(sens_map),[-pi pi]); title('sens maps (phase)'); xlabel('channels'); ylabel('slices');
-% 
-% figure(712);
-% subplot(121);
-% imagesc(abs(sens_Psi_default_sorting)); title('sens Psi (defualt)'); 
-% subplot(122);
-% imagesc(abs(sens_Psi_no_sorting)); title('sens Psi (modifiled order)'); 
+% display_bool = input('display sense map? (true/false): ');
+display_bool = 0;
+if(display_bool)
+    figure(711);
+    subplot(211);
+    immontage4D(abs(sens_map)); title('sens maps (mag)'); xlabel('channels'); ylabel('slices');
+    subplot(212);
+    immontage4D(angle(sens_map),[-pi pi]); title('sens maps (phase)'); xlabel('channels'); ylabel('slices');
+    
+    figure(712);
+    subplot(121);
+    imagesc(abs(sens_Psi_default_sorting)); title('sens Psi (defualt)');
+    subplot(122);
+    imagesc(abs(sens_Psi_no_sorting)); title('sens Psi (modifiled order)');
+end
 
 end

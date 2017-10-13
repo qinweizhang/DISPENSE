@@ -19,6 +19,7 @@ trj_mat_fn = 'traj_for_Sc2_3_5.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
+% [nav_k_spa_data, Nav_VirtualCoilMartix] = nav_kspa_data_read(data_fn);
 nav_k_spa_data = nav_kspa_data_read(data_fn);
 
 disp('-finished- ');
@@ -30,8 +31,11 @@ close all;
 offcenter_xy = [0 0]; 
 FOV_xy = [250 181.8182];
 % nav_im_recon_nufft = [];
-for dyn = 1:1
-    dyn
+dyn_recon = [3:dyn_nr 1];
+for d = 1:length(dyn_recon)
+    tic
+    dyn  = dyn_recon(d);
+    disp(['dynamic: ',num2str(dyn)]);
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
     recon_par.acq_dim = [32 32 18];  
@@ -41,7 +45,7 @@ for dyn = 1:1
     recon_par.end_point = []; %or []: till the end;
     recon_par.interations = 10;
     recon_par.lamda = 0;
-    recon_par.recon_all_shot = 0;
+    recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
@@ -59,6 +63,10 @@ for dyn = 1:1
     
     if(recon_par.update_SENSE_map)
         [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method, recon_par.sense_os);
+        %compress sense map and sense_Psi
+%         if(exist('Nav_VirtualCoilMartix','var'))
+%             [nav_sense_map, nav_sense_Psi] = compress_sense_map_Psi(Nav_VirtualCoilMartix, nav_sense_map, nav_sense_Psi);
+%         end
     end
     
     if(recon_par.sense_map_recon == 0)
@@ -73,11 +81,12 @@ for dyn = 1:1
     end
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
     nav_im_recon_nufft(:,:,:,:,:,dyn) = nav_im_recon_nufft_1dyn;
-    save Sc05_2.mat nav_im_recon_nufft -append
+    save Sc05.mat nav_im_recon_nufft -append
+    toc
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
-dyn = 1;
+dyn = 2;
 figure(801); immontage4D(angle(squeeze(nav_im_recon_nufft(:,:,:,:,:,dyn))),[-pi pi]); colormap jet; 
 figure(802); immontage4D(abs(squeeze(nav_im_recon_nufft(:,:,:,:,:,dyn))),[]); 
 phase_diff = angle(squeeze(bsxfun(@times,  nav_im_recon_nufft, exp(-1i*angle(nav_im_recon_nufft(:,:,:,1,1,:))))));
@@ -119,8 +128,8 @@ TSE.SENSE_kx =1;
 TSE.SENSE_ky =2;
 TSE.SENSE_kz =2;
 
-TSE.kyrange = [-96 -1]; 
-TSE.kxrange = [-384 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
+TSE.kyrange = [-64 -1]; 
+TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 
 TSE.Ixrange = [ceil(TSE.kxrange(1).*TSE.SENSE_kx) -1];
 TSE.Iyrange = [ceil(TSE.kyrange(1).*TSE.SENSE_ky) -1];
@@ -137,8 +146,8 @@ pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-pars.recon_x_locs = 96:258;
-pars.enabled_ch = [7: 13];
+pars.recon_x_locs = 82:250;
+pars.enabled_ch = [1:32];
 pars.b0_shots = []; %[] means first dynamic
 
 
@@ -158,7 +167,7 @@ pars.msDWIrecon.method='CG_SENSE_I'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 %------------sense mask calc----------%
 os = [1, 1, 1];
 dim = [range(TSE.Ixrange), range(TSE.Iyrange), range(TSE.Izrange) ]+1;
-[sense_map_temp, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [dim(2) dim(2) dim(3)], os);
+[sense_map_temp, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [dim(1)/2 dim(2) dim(3)], os);
 rs_command = sprintf('resize -c 0 %d', dim(1));
 sense_map_temp = bart(rs_command, sense_map_temp);
 
@@ -170,9 +179,9 @@ clear sense_map_temp;
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
 for d = 6:6
-    pars.nonb0_shots = [1:40] + (d-1)*40;
+    pars.nonb0_shots = [1:61] + (d-1)*61;
     image_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
-    save('Sc4.mat','image_sense_corrected','-append');
+    save('Sc5.mat','image_sense_corrected','-append');
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 

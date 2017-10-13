@@ -106,7 +106,7 @@ tic
 % %sense mask || now it should be calculated outside and stored in TSE structure
 if(isfield(TSE, 'sense_mask'))
     if(isempty(TSE.sense_mask)) %if empty calc again
-        dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
+        dim = [TSE.Ix_dim/2 TSE.Iy_dim TSE.Iz_dim];
         os = [1, 1, 1];
         sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
         rs_command = sprintf('resize -c 0 %d', TSE.kx_dim);
@@ -116,7 +116,7 @@ if(isfield(TSE, 'sense_mask'))
         clear sense_map_temp;
     end
 else %if not exist, calc again
-    dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
+    dim = [TSE.Ix_dim/2 TSE.Iy_dim TSE.Iz_dim];
     os = [1, 1, 1];
     sense_map_temp = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
     rs_command = sprintf('resize -c 0 %d', TSE.Ix_dim);
@@ -149,7 +149,7 @@ else
         
     elseif(strcmp(pars.sense_map, 'external'))
         if(isempty(TSE_sense_map))
-            dim = [TSE.Iy_dim TSE.Iy_dim TSE.Iz_dim];
+            dim = [TSE.Ix_dim/2 TSE.Iy_dim TSE.Iz_dim];
             os = [1, 1, 1];
             [TSE_sense_map,TSE.sense_Psi]  = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
             rs_command = sprintf('resize -c 0 %d', TSE.Ix_dim);
@@ -229,32 +229,37 @@ if(kspace_interpo)
     assert(size(nav_im_1_diff_sm, 4)==nshot);
     
     nav_k_1 = bart('fft 7', nav_im_1_diff_sm);
-    resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Iy_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range)); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
+    resize_command = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Ix_dim/2, TSE.Ix_dim/2, TSE.Iz_dim, length(nonb0_shots_range)); %nav and TSE have the same FOV, but TSE have oversampling in x, so use ky instead of kx for the 1st dimension
     nav_k_1 = bart(resize_command, nav_k_1);
     nav_im_2 = bart('fft -i 7', nav_k_1);
     
-    resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range));
-    nav_im_2 = bart(resize_command_2, nav_im_2);
     
 else %linear intopolation
-    [~, nav_y, nav_z, nav_shots] = size(nav_im_1_diff_sm);
-    nav_im_2 = zeros(TSE.Ix_dim, TSE.Iy_dim,  TSE.Iz_dim, length(nonb0_shots_range));
-    padding_size = TSE.Ix_dim - TSE.Iy_dim;
+    [nav_x, ~, nav_z, nav_shots] = size(nav_im_1_diff_sm);
+    nav_im_2 = zeros(TSE.Ix_dim, TSE.Ix_dim/2,  TSE.Iz_dim, length(nonb0_shots_range));
+    padding_size = TSE.Ix_dim/2;
     padding_left = ceil(padding_size/2);
-    x_loc_range = padding_left+1:padding_left+TSE.Iy_dim;
+    x_loc_range = padding_left+1:padding_left+TSE.Ix_dim/2;
     
     if TSE.Iz_dim==1 %2D case; use imresize
         nav_im_2(x_loc_range,:,:,:) = imresize(nav_im_1_diff_sm, TSE.Iy_dim./size(nav_im_1_diff_sm,2));
     else % 3D use interp3
         
         for sh=1:nav_shots
-            [X, Y, Z] = meshgrid(linspace(1,TSE.Iy_dim,nav_y),linspace(1,TSE.Iy_dim,nav_y),linspace(1,TSE.Iz_dim,nav_z) );  %corrdinate for original locations
-            [Xq,Yq,Zq] = meshgrid(1:TSE.Iy_dim,1:TSE.Iy_dim,1:TSE.Iz_dim );  %corrdinate for intoplated locations
+            [X, Y, Z] = meshgrid(linspace(1,TSE.Ix_dim/2,nav_x),linspace(1,TSE.Ix_dim/2,nav_x),linspace(1,TSE.Iz_dim,nav_z) );  %corrdinate for original locations
+            [Xq,Yq,Zq] = meshgrid(1:TSE.Ix_dim/2,1:TSE.Ix_dim/2,1:TSE.Iz_dim );  %corrdinate for intoplated locations
             nav_im_2(x_loc_range,:,:,sh) = interp3(X,Y,Z,squeeze(nav_im_1_diff_sm(:,:,:,sh)),Xq,Yq,Zq);
         end
+        % nav_im_2 [TSE.Ix_dim, TSE.Ix_dim/2,  TSE.Iz_dim, n_shots]
+        
+        
     end
     
 end
+
+
+resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range));
+nav_im_2 = bart(resize_command_2, nav_im_2);
 
 
 nav_im_2 = nav_im_2./abs(nav_im_2); %magnitude to 1;
@@ -279,7 +284,7 @@ tic;
 if (TSE.Iz_dim>1)
     %% 3D recon
     recon_x = pars.recon_x_locs;
-    recon_x = 124;
+%     recon_x = 150;
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);
@@ -319,10 +324,12 @@ if (TSE.Iz_dim>1)
         
         %display
         figure(101);
-        subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0'); xlabel(['x loc: ',num2str(recon_x_loc)]);
+        if(exist('im_b0'))
+            subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0');
+        end
         subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
-        subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');
-        
+        subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+        drawnow();
         %         figure(102); montage(angle((phase_error)),[-pi pi]); colormap jet
         
         
@@ -332,11 +339,15 @@ if (TSE.Iz_dim>1)
     %display
     if(1) %big screen
         figure(109);
-        subplot(141); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
+        if(exist('im_b0','var'))
+            subplot(141); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
+        end
         subplot(142); montage(permute(abs(im_nonb0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
         subplot(143); montage(permute(abs(image_corrected(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
     else
-        figure(109); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
+        if(exist('im_b0','var'))
+            figure(109); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
+        end
         figure(110); montage(permute(abs(im_nonb0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
         figure(111); montage(permute(abs(image_corrected(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
     end
