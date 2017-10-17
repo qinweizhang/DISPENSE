@@ -84,6 +84,24 @@ for n=1:maxit
         axis off;
         title(['Iteration #', num2str(n),': current tolerance = ', num2str(sqrt(normrr/normrr0)), '.']);
         drawnow;
+        
+         figure(2000);
+        if isnumeric(z) && isvector(z)
+            plot(angle(z));
+        elseif isnumeric(z) && is2Darray(z)
+            imagesc(angle(z),[-pi pi]);
+            colormap jet;
+        elseif isnumeric(z) && length(size(z))==3
+            imagesc(angle(array2mosaic(z)),[-pi pi]);
+            colormap jet;
+        else
+            imagesc(z,[-pi pi]);
+            colormap jet;
+        end
+        axis off;
+        title(['Iteration #', num2str(n),': current tolerance = ', num2str(sqrt(normrr/normrr0)), '.']);
+        drawnow;
+        
     elseif verbose_flag==2
         fprintf(['Iteration #', num2str(n),': current tolerance = ', num2str(sqrt(normrr/normrr0)), '\n']);
     end

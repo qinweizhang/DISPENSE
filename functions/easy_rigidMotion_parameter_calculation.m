@@ -96,7 +96,7 @@ function[ nav_ima_phase_unwrapped_diff,fitted_nav_ima_phase, linear_phase_xy,glo
             all_intensity = sort(col(abs(nav_im_recon_nufft(:,:,ch_idx,shot_idx))));
             
             % pixels with high magnitude; not NaN; not Inf; being used for fitting
-            image_intensity_cutoff = all_intensity(round(length(all_intensity)*0.5)); %0.5: 50% of the pixels were used; 0.8: 20% of the pixels were used
+            image_intensity_cutoff =max( all_intensity(round(length(all_intensity)*0.6)), eps); %0.5: 50% of the pixels were used; 0.8: 20% of the pixels were used
 
             idx_id = find((abs(nav_im_recon_nufft(:,:,ch_idx,shot_idx))>image_intensity_cutoff)&(~isnan(fitting_nav_ima_phase_unwrapped))&(~isinf(fitting_nav_ima_phase_unwrapped)));
             fun_b = @(b)(   (   (mod(idx_id-1,kx)-kx/2) * b(1) + (floor((idx_id-1)/kx)-ky/2) * b(2) +  b(3)  ) ...

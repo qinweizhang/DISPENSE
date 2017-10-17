@@ -11,7 +11,7 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_06102017_1036251_4_2_wipsndbrainhighres518experiment1senseV4.raw';
+data_fn = 'sn_06102017_1030381_3_2_wipsndbrainhighres518senseV4.raw';
 sense_ref_fn = 'sn_06102017_1030197_1000_11_wipsenserefscanclearV4.raw';
 coil_survey_fn  = 'sn_06102017_1029025_1000_8_wipcoilsurveyscanV4.raw';
 
@@ -27,6 +27,9 @@ disp(' Spiral NUFFT recon...');
 close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
+offcenter_xy = [0 0];
+FOV_xy = [260 260];
+    
 nav_im_recon_nufft = [];
 for dyn = 1:dyn_nr
     dyn
@@ -65,8 +68,7 @@ for dyn = 1:dyn_nr
     end
     nav_sense_map = normalize_sense_map(nav_sense_map);
     
-    offcenter_xy = [-35 0]; 
-    FOV_xy = [150 150];
+    
     
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, [],offcenter_xy, FOV_xy);
     nav_im_recon_nufft = cat(6, nav_im_recon_nufft, nav_im_recon_nufft_1dyn);
@@ -133,7 +135,7 @@ pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
 pars.recon_x_locs = 96:258;
-pars.enabled_ch = [7: 13];
+pars.enabled_ch = [1: 13];
 pars.b0_shots = []; %[] means first dynamic
 
 
@@ -164,10 +166,10 @@ clear sense_map_temp;
 
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
-for d = 6:6
+for d = 2:2
     pars.nonb0_shots = [1:40] + (d-1)*40;
     image_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
-    save('Sc4.mat','image_sense_corrected','-append');
+    save('Sc3.mat','image_corrected','-append');
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 

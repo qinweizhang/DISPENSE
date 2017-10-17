@@ -11,7 +11,7 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_05102017_1741096_5_2_wip_sc17_dpsti_sosad_linearV4.raw';
+data_fn = 'sn_05102017_1745153_6_2_wip_sc17_dpsti_sosad_linearV4.raw';
 sense_ref_fn = 'sn_05102017_1720266_1000_7_wip_senserefscanV4.raw';
 coil_survey_fn  = 'sn_05102017_1717314_1000_2_wip_coilsurveyscanV4.raw';
 
@@ -101,7 +101,9 @@ end
 disp('-finished- ');
 
 %% 3D sprial navigator data phase unwrapping
-current_mat_file = 'Sc5.mat'
+current_mat_file = 'Sc3.mat'
+nav_im_recon_nufft = squeeze(nav_im_recon_nufft);
+
 nav_im_recon_nufft=permute(nav_im_recon_nufft,[1 3 2 4]);
 
 nav_im_recon_nufft_diff = bsxfun(@rdivide, nav_im_recon_nufft,  exp(1i.*angle(nav_im_recon_nufft(:,:,:,1))));

@@ -40,30 +40,32 @@ TSE.Iy_dim = TSE.Iyrange(2) - TSE.Iyrange(1) + 1;  %max_ky * 2 + 1;
 TSE.Iz_dim = TSE.Izrange(2) - TSE.Izrange(1) + 1;
 
 %% Preprocessing on kspace data for b=0
-
-disp('Preprocessing on kspace data for b=0');
-if(isempty(pars.b0_shots))
-    b0_shots_range = 1:shots_per_dyn; %by default, the first dynamic
-else
-    b0_shots_range = pars.b0_shots;
+calc_b0 = 0; %input('calculate b0?(1/0):');
+if(calc_b0)
+    disp('Preprocessing on kspace data for b=0');
+    if(isempty(pars.b0_shots))
+        b0_shots_range = 1:shots_per_dyn; %by default, the first dynamic
+    else
+        b0_shots_range = pars.b0_shots;
+    end
+    
+    tic;
+    
+    kspa_b0 = sort_k_spa_sh_by_sh(ima_k_spa_data, b0_shots_range, TSE, pars);
+    
+    kspa_b0_combshot = sum(kspa_b0, 5)./sum(abs(kspa_b0)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zeros average
+    kspa_b0_combshot(find(isnan(kspa_b0_combshot)))=0; kspa_b0_combshot(find(isinf(kspa_b0_combshot)))=0;
+    
+    im_b0_ch_by_ch=ifft3d(kspa_b0_combshot);
+    im_b0=sqrt(sum(abs(im_b0_ch_by_ch).^2, 4));
+    figure(1); montage(permute(abs(im_b0),[1 2 4 3]),'displayrange',[]); title('b0 images');
+    
+    clear kspa_b0_combshot
+    
+    toc;
 end
-
-tic;
-
-kspa_b0 = sort_k_spa_sh_by_sh(ima_k_spa_data, b0_shots_range, TSE, pars);
-
-kspa_b0_combshot = sum(kspa_b0, 5)./sum(abs(kspa_b0)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zeros average
-kspa_b0_combshot(find(isnan(kspa_b0_combshot)))=0; kspa_b0_combshot(find(isinf(kspa_b0_combshot)))=0;
-
-im_b0_ch_by_ch=ifft3d(kspa_b0_combshot);
-im_b0=sqrt(sum(abs(im_b0_ch_by_ch).^2, 4));
-figure(1); montage(permute(abs(im_b0),[1 2 4 3]),'displayrange',[]); title('b0 images');
-
-clear kspa_b0_combshot
-
-toc;
-
 %% Preprocessing on kspace data for nonb0
+
 
 disp('Preprocessing on kspace data for nonb0');
 
@@ -260,11 +262,12 @@ end
 
 resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range));
 nav_im_2 = bart(resize_command_2, nav_im_2);
+nav_im_2_masked = (bsxfun(@times, nav_im_2, TSE.sense_mask));  %mask
 
 
-nav_im_2 = nav_im_2./abs(nav_im_2); %magnitude to 1;
-nav_im_2(isnan(nav_im_2)) = 0; nav_im_2(isinf(nav_im_2)) = 0;
-phase_error_3D = nav_im_2;
+nav_im_3 = nav_im_2./abs(nav_im_2); %magnitude to 1;
+nav_im_3(isnan(nav_im_3)) = 0; nav_im_3(isinf(nav_im_3)) = 0;
+phase_error_3D = nav_im_3;
 
 phase_error_3D = normalize_sense_map(phase_error_3D); %miss use normalize_sense_map
 phase_error_3D = conj(phase_error_3D); %conj or not???
@@ -284,7 +287,7 @@ tic;
 if (TSE.Iz_dim>1)
     %% 3D recon
     recon_x = pars.recon_x_locs;
-%     recon_x = 150;
+%     recon_x = 200;
     for x_idx = 1:length(recon_x)
         
         recon_x_loc = recon_x(x_idx);
@@ -317,6 +320,11 @@ if (TSE.Iz_dim>1)
         end
         % ========================================================================================
         
+        % display phase error------------------
+        figure(411);
+        montage(permute(squeeze(angle(phase_error)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet; title('phase error map');
+        %---------------------------------------
+        
         
         image_corrected(recon_x_loc,:,:) = msDWIrecon(kspa, sense_map, phase_error, pars.msDWIrecon);
         
@@ -330,8 +338,17 @@ if (TSE.Iz_dim>1)
         subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
         subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
         drawnow();
-        %         figure(102); montage(angle((phase_error)),[-pi pi]); colormap jet
-        
+
+        %check nav image & TSE image consistance
+        figure(102);
+        subplot(231);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('reon'); 
+        subplot(232);imshow(squeeze(mean(abs(nav_im_2(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');  
+        subplot(233);imshow(squeeze(mean(abs(nav_im_2_masked(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');  
+        subplot(234);imshow(squeeze(angle(image_corrected(recon_x_loc,:,:))),[-pi pi]); title('angle recon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+        subplot(235);imshow(squeeze(angle(nav_im_2(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+        subplot(236);imshow(squeeze(angle(nav_im_2_masked(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+
+        drawnow();
         
     end
     

@@ -114,22 +114,25 @@ MR_DPstiTSE.EPIPhaseCorrection;
 MR_DPstiTSE.K2IP;
 MR_DPstiTSE.GridderNormalization;
 
-% % % --------------Calculate SENSE object-------------
-% x = size(MR_DPstiTSE.Data,1);
-% y = size(MR_DPstiTSE.Data,2);
-% z = size(MR_DPstiTSE.Data,3);
-% MR_sense = MRsense(sense_ref_fn, raw_data_fn, coil_survey_fn);
-% MR_sense.Mask = 1;
-% MR_sense.MatchTargetSize = 1;
-% % MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
-% % MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
-% MR_sense.Perform;
-% % % ----------------------end-----------------------
-% MR_DPstiTSE.Parameter.Recon.Sensitivities = MR_sense;
-% % 
-% MR_DPstiTSE.SENSEUnfold;  %no sense here 
-
- warning('Kerry: SENSE unfolder disabled for this case!'); MR_DPstiTSE.CombineCoils;
+sense_recon = 0;
+if(sense_recon)
+    % --------------Calculate SENSE object-------------
+    x = size(MR_DPstiTSE.Data,1);
+    y = size(MR_DPstiTSE.Data,2);
+    z = size(MR_DPstiTSE.Data,3);
+    MR_sense = MRsense(sense_ref_fn, raw_data_fn, coil_survey_fn);
+    MR_sense.Mask = 1;
+    MR_sense.MatchTargetSize = 1;
+    MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+    MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+    MR_sense.Perform;
+    % ----------------------end-----------------------
+    MR_DPstiTSE.Parameter.Recon.Sensitivities = MR_sense;
+    
+    MR_DPstiTSE.SENSEUnfold; 
+else
+    warning('Kerry: SENSE unfolder disabled for this case!'); MR_DPstiTSE.CombineCoils;
+end
 
 MR_DPstiTSE.ConcomitantFieldCorrection;
 MR_DPstiTSE.DivideFlowSegments;

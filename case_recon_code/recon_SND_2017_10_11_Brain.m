@@ -11,7 +11,7 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_11102017_1527075_5_2_wip_sc5_3d_snd_brain_4bV4.raw';
+data_fn = 'sn_11102017_1512078_2_2_wip_sc5_3d_snd_brain_4bV4.raw';
 sense_ref_fn = 'sn_11102017_1525376_1000_11_wip_senserefscanV4.raw';
 coil_survey_fn  = 'sn_11102017_1525109_1000_8_wip_coilsurveyscanV4.raw';
 
@@ -31,7 +31,7 @@ close all;
 offcenter_xy = [0 0]; 
 FOV_xy = [250 181.8182];
 % nav_im_recon_nufft = [];
-dyn_recon = [3:dyn_nr 1];
+dyn_recon = 1; %[1: dyn_nr];
 for d = 1:length(dyn_recon)
     tic
     dyn  = dyn_recon(d);
@@ -81,7 +81,8 @@ for d = 1:length(dyn_recon)
     end
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
     nav_im_recon_nufft(:,:,:,:,:,dyn) = nav_im_recon_nufft_1dyn;
-    save Sc05.mat nav_im_recon_nufft -append
+%     nav_im_recon_nufft_2 = nav_im_recon_nufft;
+    save Sc02.mat nav_im_recon_nufft  -append
     toc
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
@@ -147,7 +148,7 @@ pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
 pars.recon_x_locs = 82:250;
-pars.enabled_ch = [1:32];
+pars.enabled_ch = [1:31];
 pars.b0_shots = []; %[] means first dynamic
 
 
@@ -178,10 +179,13 @@ clear sense_map_temp;
 
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
-for d = 6:6
-    pars.nonb0_shots = [1:61] + (d-1)*61;
-    image_corrected(:,:,:,d) = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
-    save('Sc5.mat','image_sense_corrected','-append');
+for d = [1:1]
+    d
+    pars.nonb0_shots = [1:26] + (d-1)*26;
+    result = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, ones(size(nav_data)), pars);
+%     result = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars);
+    image_corrected_1s(:,:,:,d)  = result;
+    save('Sc02.mat','image_corrected_1s','-append');
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 

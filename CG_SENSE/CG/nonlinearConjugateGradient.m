@@ -157,6 +157,23 @@ for iter = 1:maxit
         title(sprintf('iter %d: step = %1.5e, f(z) = %1.5e, gnorm = %1.5e\n', iter, alpha*gnorm/reference_norm, fz, gnorm));
         drawnow;
         fprintf('iter %d: step = %1.5e, f(z) = %1.5e, gnorm = %1.5e\n', iter, alpha*gnorm/reference_norm, fz, gnorm);
+        
+        figure(3000);
+        if isvector(z)
+            plot(angle(z));
+        elseif is2Darray(z)
+            imagesc(angle(z),[-pi pi]); colormap jet
+            colormap gray;
+        elseif length(size(z))==3
+            imagesc(angle(array2mosaic(z)),[-pi pi]); colormap jet
+            colormap gray;
+        end
+        axis off;
+        title(sprintf('iter %d: step = %1.5e, f(z) = %1.5e, gnorm = %1.5e\n', iter, alpha*gnorm/reference_norm, fz, gnorm));
+        drawnow;
+        fprintf('iter %d: step = %1.5e, f(z) = %1.5e, gnorm = %1.5e\n', iter, alpha*gnorm/reference_norm, fz, gnorm);
+
+        
     elseif verbose_flag==2
         fprintf('iter %d: step = %1.5e, f(z) = %1.5e, gnorm = %1.5e\n', iter, alpha*gnorm/reference_norm, fz, gnorm);
     end
