@@ -91,7 +91,7 @@ elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
     warning('Perform LRT reconstruction...no external phase error information is used...');
     assert(n_type==2);
 
-    image_corrected_LRT=LRT_recon(kspa,squeeze(sense_map),pars.LRT);
+    image_corrected_LRT=LRT_recon_msDWI(kspa,squeeze(sense_map),pars.LRT);
     figure(1000);
     subplot(221); montage(permute(squeeze(abs(image_corrected_LRT(:,:,1,:,1))),[1 2 4 3]),'displayrange',[]); title('LRT recon of nav. column (mag.)')
     subplot(222); montage(permute(squeeze(angle(image_corrected_LRT(:,:,1,:,1))),[1 2 4 3]),'displayrange',[-pi pi]);title('LRT recon of nav. column (phase.)')

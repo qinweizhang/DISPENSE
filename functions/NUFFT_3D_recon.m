@@ -89,6 +89,9 @@ clear im_recon_nufft nav_im_recon_nufft
 % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
 if(exist('nav_sense_Psi','var'))
     if(~isempty(nav_sense_Psi))
+        for t=1:length(nav_sense_Psi)  %make sure diag(nav_sense_Psi) are all real; they should be!
+            nav_sense_Psi(t,t) = real(nav_sense_Psi(t,t));
+        end
         L = chol(nav_sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
         L_inv = inv(L);
         for c = 1:size(nav_sense_Psi,1)

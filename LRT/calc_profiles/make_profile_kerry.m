@@ -5,10 +5,10 @@ fprintf('Making LRT profile \n')
 fprintf('--------------------\n \n')
 
 %%%%%%%%%%%% PARAMETERS TO CHANGE%%%%%%%%%%%%%%%%%%%%%%%
-nDim1=42; % TSE dimensions/DTI
+nDim1=26; % TSE dimensions/DTI
 nDim2=2; % T2-prep 
-ky=108; 
-kz=29; 
+ky=128; 
+kz=68; 
 
 dim1_bigctr=1; % dimension number of fully sampled center (param dimension 1)
 dim2_bigctr=1; % dimension number of fully sampled center (param dimension 1)
@@ -118,8 +118,8 @@ else
 end
 savemask_LRT(profile_order,filename,visualize)
 
-sparse_ky_profile = col(profile_order(1,:,1:42));
-sparse_kz_profile = col(profile_order(1,:,1:42));
+sparse_ky_profile = col(profile_order(1,:,1:26));
+sparse_kz_profile = col(profile_order(2,:,1:26));
 
 fprintf('Saved as %s \n',filename)
 fprintf('in folder: %s \n',pwd)

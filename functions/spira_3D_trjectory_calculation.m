@@ -205,11 +205,14 @@ all_wrapped = false;
 while(~all_wrapped)
     
     mm = im_M1_ksp_phase_unwrap(:,:,diffusion_nr)-im_M2_ksp_phase_unwrap(:,:,b0_diffusion_idx);
-    figure(1001); plot(mm(1,:)); set(gca,'xtick',[1:2:40]); grid on;
+    figure(1001); set(gcf,'DefaultAxesFontSize',8);
+    plot(mm(1,:)); set(gca,'xtick',[1:2:40]); grid on; 
     pp =im_P1_ksp_phase_unwrap(:,:,diffusion_nr)-im_P2_ksp_phase_unwrap(:,:,b0_diffusion_idx);
-    figure(1002); plot(pp(1,:)); set(gca,'xtick',[1:2:40]); grid on;
+    figure(1002); set(gcf,'DefaultAxesFontSize',8);
+    plot(pp(1,:)); set(gca,'xtick',[1:2:40]); grid on; 
     ss =im_S1_ksp_phase_unwrap(:,:,diffusion_nr)-im_S2_ksp_phase_unwrap(:,:,b0_diffusion_idx);
-    figure(1003); plot(ss(1,:)); set(gca,'xtick',[1:2:40]); grid on;
+    figure(1003);  set(gcf,'DefaultAxesFontSize',8);
+    plot(ss(1,:)); set(gca,'xtick',[1:2:40]); grid on; 
     
     all_wrapped = input('all phase properly warpped?(false/true): ');
     

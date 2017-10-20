@@ -17,12 +17,13 @@ function [ima_k_spa_data,ky_matched,kz_matched,shot_matched, ch_dim,kspa_sorted,
 %TSE_sense_map:     TSE sense maps for TSE recon
 %varargout:         optional: kx_range ky_range kz_range
 
-
+%% Presetting
 MR_DPstiTSE = MRecon(raw_data_fn);
 
 
 MR_DPstiTSE.Parameter.Parameter2Read.typ = 1;
 MR_DPstiTSE.Parameter.Parameter2Read.mix = 0;
+MR_DPstiTSE.Parameter.Recon.ImmediateAveraging = 'No';
 
 if(nargin==4)
     parameter2read = varargin{1};
@@ -34,15 +35,29 @@ end
     
 ch_dim = length(MR_DPstiTSE.Parameter.Labels.CoilNrs);
 
+if(nargout == 12)
+    % ask for add coil compression
+    virtual_coil_nr = input(['Please input virtual coil nr for TSE DATA (0~',num2str(ch_dim),'; 0 for no coil comprsion):']);
+    
+    if(virtual_coil_nr>0)
+        MR_DPstiTSE.Parameter.Recon.ArrayCompression='Yes';
+        MR_DPstiTSE.Parameter.Recon.ACNrVirtualChannels=virtual_coil_nr;
+        ch_dim = virtual_coil_nr;
+    end
+end
 
 
-MR_DPstiTSE.Parameter.Recon.ImmediateAveraging = 'No';
+%% Read Data
+
+
 MR_DPstiTSE.ReadData;
 MR_DPstiTSE.RandomPhaseCorrection;
 % MR_DPstiTSE.RemoveOversampling;
 MR_DPstiTSE.PDACorrection;
 MR_DPstiTSE.DcOffsetCorrection;
 MR_DPstiTSE.MeasPhaseCorrection;
+
+%% Extract\Create Labels
 
 %--------------creat a label for shot number--------------&
 dyn=MR_DPstiTSE.Parameter.Labels.Index.dyn;
@@ -76,8 +91,33 @@ kz_matched = kz_all(readdata_ix);
 shot_matched = shot(readdata_ix);
 nsa_matched = nsa(readdata_ix);
 
+%----------comsider coil compression-------------
+% ky_matched kz_matched shot_matched nsa_matched are match with full data  set (i.e. when all the k lines are exported)
+
+if(virtual_coil_nr>0)
+    ky_matched_rs = reshape(ky_matched, length(ch_num), length(ky_matched)/length(ch_num));
+    kz_matched_rs = reshape(kz_matched, length(ch_num), length(kz_matched)/length(ch_num));
+    shot_matched_rs = reshape(shot_matched, length(ch_num), length(shot_matched)/length(ch_num));
+    nsa_matched_rs = reshape(nsa_matched, length(ch_num), length(nsa_matched)/length(ch_num));
+    
+    ky_matched_rs2 = repmat(ky_matched_rs(1,:), virtual_coil_nr, 1 );
+    kz_matched_rs2 = repmat(kz_matched_rs(1,:), virtual_coil_nr, 1 );
+    shot_matched_rs2 = repmat(shot_matched_rs(1,:), virtual_coil_nr, 1 );
+    nsa_matched_rs2 = repmat(nsa_matched_rs(1,:), virtual_coil_nr, 1 );
+    
+    ky_matched = ky_matched_rs2(:);
+    kz_matched = kz_matched_rs2(:);
+    shot_matched = shot_matched_rs2(:);
+    nsa_matched = nsa_matched_rs2(:);
+end
+%----------comsider coil compression END-------------
+
+
+
+
 
 %============Display shot labels=============
+
 %Sort Shot Label in the same way as soring data
 MR_DPsti_shotLabel = MR_DPstiTSE.Copy;
 Data_temp = MR_DPsti_shotLabel.Data;
@@ -103,7 +143,7 @@ ima_k_spa_data = squeeze(double(MR_DPstiTSE.Data));
 
 
 
-%==============Continue with Image Kspa data extracting
+%% ==============Continue with Image Kspa data extracting
 MR_DPstiTSE.SortData;
 kspa_sorted = squeeze(double(MR_DPstiTSE.Data));
 MR_DPstiTSE.GridData;
@@ -116,20 +156,24 @@ MR_DPstiTSE.GridderNormalization;
 
 sense_recon = 0;
 if(sense_recon)
-    % --------------Calculate SENSE object-------------
-    x = size(MR_DPstiTSE.Data,1);
-    y = size(MR_DPstiTSE.Data,2);
-    z = size(MR_DPstiTSE.Data,3);
-    MR_sense = MRsense(sense_ref_fn, raw_data_fn, coil_survey_fn);
-    MR_sense.Mask = 1;
-    MR_sense.MatchTargetSize = 1;
-    MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
-    MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
-    MR_sense.Perform;
-    % ----------------------end-----------------------
-    MR_DPstiTSE.Parameter.Recon.Sensitivities = MR_sense;
-    
-    MR_DPstiTSE.SENSEUnfold; 
+    if(virtual_coil_nr==0) %only for no coil compression
+        % --------------Calculate SENSE object-------------
+        x = size(MR_DPstiTSE.Data,1);
+        y = size(MR_DPstiTSE.Data,2);
+        z = size(MR_DPstiTSE.Data,3);
+        MR_sense = MRsense(sense_ref_fn, raw_data_fn, coil_survey_fn);
+        MR_sense.Mask = 1;
+        MR_sense.MatchTargetSize = 1;
+        MR_sense.OutputSizeReformated = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+        MR_sense.OutputSizeSensitivity = [x y z]; warning('kerry temp. overwrite defualt parameter here!');
+        MR_sense.Perform;
+        % ----------------------end-----------------------
+        MR_DPstiTSE.Parameter.Recon.Sensitivities = MR_sense;
+
+        MR_DPstiTSE.SENSEUnfold; 
+    else
+        warning('Kerry: SENSE unfolder not available for compressed data!'); MR_DPstiTSE.CombineCoils;
+    end
 else
     warning('Kerry: SENSE unfolder disabled for this case!'); MR_DPstiTSE.CombineCoils;
 end
@@ -163,6 +207,9 @@ if(nargout>=11)
     else
         varargout{3} = MR_DPstiTSE.Parameter.Encoding.ZRange(1,:);
     end
+end
+if(nargout>=12) %TSE_VirtualCoilMartix
+    varargout{4} = MR_DPstiTSE.Parameter.Recon.ACMatrix;
 end
         
 

@@ -154,6 +154,12 @@ else
             dim = [TSE.Ix_dim/2 TSE.Iy_dim TSE.Iz_dim];
             os = [1, 1, 1];
             [TSE_sense_map,TSE.sense_Psi]  = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, dim, os);
+            %compress sense map and sense_Psi
+            if(isfield(TSE, 'VirtualCoilMartix'))
+                if(~isempty(TSE.VirtualCoilMartix))
+                    [TSE_sense_map, TSE.sense_Psi] = compress_sense_map_Psi(TSE.VirtualCoilMartix, TSE_sense_map,  TSE.sense_Psi);
+                end
+            end
             rs_command = sprintf('resize -c 0 %d', TSE.Ix_dim);
             TSE_sense_map = bart(rs_command, TSE_sense_map);
         end
@@ -300,6 +306,9 @@ if (TSE.Iz_dim>1)
         
         % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
         if(exist('sense_Psi', 'var'))
+            for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
+                sense_Psi(t,t) = real(sense_Psi(t,t));
+            end
             L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
             L_inv = inv(L);
             for c = 1:size(sense_Psi,1)
@@ -377,6 +386,9 @@ else
     
     % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
     if(exist('sense_Psi', 'var'))
+        for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
+            sense_Psi(t,t) = real(sense_Psi(t,t));
+        end
         L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
         L_inv = inv(L);
         for c = 1:size(sense_Psi,1)

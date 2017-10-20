@@ -1,7 +1,7 @@
 %==========DPsti-TSE nonrigid motion correction simulation============
 cd('/home/qzhang/lood_storage/divi/Users/qzhang/SoSND/SoSND/simulations/brain_test_data')
 clear; close all; clc
-load('test_data_10_07.mat')  %  test_data_09_24
+load('test_data_10_11.mat')  %  test_data_09_24
 
 %%  STEP1: generate phase error for every shot
 
@@ -10,23 +10,23 @@ load('test_data_10_07.mat')  %  test_data_09_24
 
 
 
-generate_phase_error = true;
+generate_phase_error = false;
 load_phase_error = ~generate_phase_error;
 
 
+
+sh_dim = max(TSE.shot_matched) - min(TSE.shot_matched) + 1;
 if(generate_phase_error)
-    sh_dim = max(TSE.shot_matched) - min(TSE.shot_matched) + 1;
-    
     phase_error_3D = [];
     for shot = 1:sh_dim
         
         %% global phase error
-        %         pe_temp = exp(1i .* shot .* ones(TSE.kx_dim, TSE.ky_dim, TSE.kz_dim));
-        %         phase_error_3D = cat(5, phase_error_3D, pe_temp);
+        %                 pe_temp = exp(1i .* shot .* ones(TSE.kx_dim, TSE.ky_dim, TSE.kz_dim));
+        %                 phase_error_3D = cat(5, phase_error_3D, pe_temp);
         %% linear phase error
-        %         pe_2D = linear2Dmap(shot*3, 0.2, TSE.kx_dim, TSE.ky_dim);
-        %         pe_temp = exp(1i .* pe_2D);
-        %         phase_error_3D = cat(5, phase_error_3D, pe_temp);
+        %                 pe_2D = linear2Dmap(shot*3, 0.2, TSE.kx_dim, TSE.ky_dim);
+        %                 pe_temp = exp(1i .* pe_2D);
+        %                 phase_error_3D = cat(5, phase_error_3D, pe_temp);
         
         %% random phase error
         rand_phase = 50 * pi *random_phase_map(TSE.kx_dim, TSE.ky_dim, TSE.kz_dim,1);
@@ -69,10 +69,10 @@ phase_error_3D(find(isinf(phase_error_3D))) = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 close all
-LRT_nav_mask_enable = false;
 
 
-load_default = true;
+
+load_default = false;
 load_sparse_profile = ~load_default;
 
 noiselevel = 0;
@@ -83,9 +83,9 @@ im_recon_direct = zeros(size(im_ref));
 simulate_ky_sense_2 = false;
 simulate_kz_sense_2 = false;
 
-ch_id = [1:13];
-recon_shot_range = 1:40;
-recon_x_range = 200; %130:170;
+ch_id = [1:10];
+recon_shot_range = 1:26;
+recon_x_range = 190; %130:170;
 for x = 1:length(recon_x_range)
     %% Set recon parameters
     
@@ -94,7 +94,7 @@ for x = 1:length(recon_x_range)
     %recon parameter------------------------------------------------
     pars = initial_msDWIrecon_Pars;
     
-    pars.method='CG_SENSE_I'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
+    pars.method='LRT'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
     
     pars.CG_SENSE_I.lamda=0.1;
     pars.CG_SENSE_I.nit=30;
@@ -103,15 +103,15 @@ for x = 1:length(recon_x_range)
     pars.POCS.Wsize = [10 10];  %no point to be bigger than navigator area
     pars.POCS.nit = 300;
     pars.POCS.tol = 1e-10;
-    pars.POCS.lamda = 1;
+    pars.POCS.lamda = 0;
     pars.POCS.nufft = false;
     
-    pars.LRT.Lg=4;
-    pars.LRT.L3=4;
-    pars.LRT.L4=1;
-    pars.LRT.mu = 1e2;
+    pars.LRT.Lg=3;
+    pars.LRT.L3=6;
+    pars.LRT.L4=2;
+    pars.LRT.mu = 2e2;
     pars.LRT.beta = 1;
-    pars.LRT.lambda = 1e-1;
+    pars.LRT.lambda = 5e-1;
     
     pars.LRT.sparsity_transform='TV';
     pars.LRT.Imref=cat(3, repmat(squeeze(im_b0_ref(recon_x_loc,:,:,:)), [1 1 1 2]), repmat(squeeze(im_ref(recon_x_loc,:,:,:)), [1 1 length(recon_shot_range) 2]));
@@ -125,7 +125,7 @@ for x = 1:length(recon_x_range)
     pars.LRT.G.maxiter = 10;
     pars.LRT.scaleksp=0;
     pars.LRT.niter = 5;
-    
+    LRT_nav_mask_enable = strcmp( pars.method, 'LRT');
     
     %--------------------------------------------------------------
     %% UPDATE mask
@@ -143,7 +143,7 @@ for x = 1:length(recon_x_range)
         
     elseif(load_sparse_profile)
         %% sparse sampling pattern
-        sh_dim = 40;
+        sh_dim = length(recon_shot_range);
         ky_labels = sparse_ky_profile + ceil(TSE.ky_dim/2); %0-->TSE.ky_dim/2
         kz_labels = sparse_kz_profile + ceil(TSE.kz_dim/2); %0-->TSE.ky_dim/2
         prof_per_shot = length(ky_labels)/sh_dim;
@@ -163,20 +163,36 @@ for x = 1:length(recon_x_range)
     
     %plot
     figure(12);
-    subplot(141); montage(ttt, 'displayrange',[]);xlabel('kz'); ylabel('ky'); title('sampling mask shot-by-shot');
-    subplot(142); imagesc(sum(ttt,4), [0 2]); colormap jet; axis off; axis equal; xlabel('kz'); ylabel('ky'); title('sample times'); colorbar;
-    ttt = sum(bsxfun(@times, ttt, permute(1:40, [4 3 1 2])),4);
-    subplot(143); imagesc(ttt, [0 sh_dim]); colormap jet; axis off; axis equal; xlabel('kz'); ylabel('ky'); title('smaple shot #'); colorbar;
+    subplot(211); montage(ttt, 'displayrange',[]);xlabel('kz'); ylabel('ky'); title('sampling mask shot-by-shot');
+    subplot(223); imagesc(sum(ttt,4), [0 2]); colormap jet; axis off; axis equal; xlabel('kz'); ylabel('ky'); title('sample times'); colorbar;
+    ttt = sum(bsxfun(@times, ttt, permute(1:size(ttt,4), [4 3 1 2])),4);
+    subplot(224); imagesc(ttt, [0 sh_dim]); colormap jet; axis off; axis equal; xlabel('kz'); ylabel('ky'); title('sample shot #'); colorbar;
     clear ttt;
     
     %================separate navigator for LRT============================
     LRT_nav_mask = [];
     if(LRT_nav_mask_enable)
         LRT_nav_mask = zeros(size(mask));
-        LRT_nav_mask(:,k0_idx(2)-10:k0_idx(2)+10,k0_idx(3)-5:k0_idx(3)+5,:,:) = 1;
+        LRT_nav_mask(:,k0_idx(2)-10:k0_idx(2)+10,k0_idx(3)-8:k0_idx(3)+8,:,:) = 1;
 %         LRT_nav_mask = ones(size(mask));
     end
     
+    %% SELECT Phase error map
+    %select pe x loc
+    
+    %opt 1
+    phase_error_3D_current =  phase_error_3D(recon_x_loc,:,:,:,:);
+    
+    %opt 2
+    if(1)
+        phase_error_3D_current =  permute(spiral_nav_im(recon_x_loc,:,:,:,:),[1 2 3 5 4]);
+        phase_error_3D_current = bsxfun(@rdivide, phase_error_3D_current, phase_error_3D_current(:,:,:,:,1));
+        phase_error_3D_current(find(isnan(phase_error_3D_current)+isinf(phase_error_3D_current))) = 0;
+    end
+    
+    %opt3
+    %     phase_error_3D_current = ones(size( phase_error_3D(recon_x_loc,:,:,:,:)));
+
     
     %% corrupt data
     
@@ -188,8 +204,7 @@ for x = 1:length(recon_x_range)
         sense_map_3D = ones(size(im_ref));
     end
     
-    %select pe x loc
-    phase_error_3D_current = phase_error_3D(recon_x_loc,:,:,:,:);
+    
     
     
     
@@ -217,9 +232,21 @@ for x = 1:length(recon_x_range)
     
     
     kspa_xyz = bsxfun(@times, fft3d(im_pe), mask);
-    if(~isempty(LRT_nav_mask)) % for LRT separate navigator
-        kspa_xyz_nav =  bsxfun(@times, fft3d(im_pe), LRT_nav_mask);
+    
+    %---- for LRT separate navigators --------
+    if(~isempty(LRT_nav_mask)) 
+             
+        corrup_nav = 1;
+        if(corrup_nav)  %corrupt the navigator or load a corrupted nav
+            disp('navigator image is distorted!')
+            im_pe = spiral_nav_im(recon_x_loc,:,:,:,:);
+            im_pe = bsxfun(@times, sense_map_3D, permute(im_pe,[1 2 3 5 4]));
+        end
+        kspa_full = fft3d(im_pe); 
+        kspa_xyz_nav =  bsxfun(@times, kspa_full, LRT_nav_mask);
     end
+    %------------------------------------------
+    
     %     kspa_xyz = fft3d(im_pe);
     clear im_pe;
     
@@ -258,6 +285,18 @@ for x = 1:length(recon_x_range)
         pp=sqrt(sum(abs(kk_c).^2, 4));
         figure(41); montage(permute(abs(pp),[2 3 4 1]),'displayrange',[]); title('direct of navigator');
         clear  pp ll kk_c
+        
+        nav_im = ifft2d(squeeze(kspa_x_yz_nav));
+        figure(411);
+        subplot(121);montage(permute(squeeze(abs(nav_im(:,:,1,:))),[1 2 4 3]),'displayrange',[]); title('all nav images mag.')
+        subplot(122);montage(permute(squeeze(abs(LRT_nav_mask)),[1 2 4 3]),'displayrange',[]); title('mask')
+        figure(412); 
+        nav_im_diff = bsxfun(@rdivide, nav_im, nav_im(:,:,:,1)); 
+        nav_im_diff(find(isnan(nav_im_diff)+isinf(nav_im_diff)))=0;
+        subplot(121); montage(permute(squeeze(angle(nav_im_diff(:,:,1,:))),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet;  title('all nav images phase.')
+        phase_error_3D_current_diff = bsxfun(@rdivide, phase_error_3D_current, phase_error_3D_current(:,:,:,:,1)); 
+        phase_error_3D_current_diff(find(isnan(phase_error_3D_current_diff)+isinf(phase_error_3D_current_diff)))=0;
+        subplot(122); montage(permute(squeeze(angle(phase_error_3D_current_diff)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet;  title('true phase error')
     end
     
     
