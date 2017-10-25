@@ -1,3 +1,5 @@
+%     Optimized DPsti_TSE_phase_error_cor function for large data recon. Avoid huge matrix allocation
+%
 %     Use msDWIrecon function to correct phase inherence during multishot DPsti-TSE
 %
 %     INPUT
@@ -14,7 +16,7 @@
 %     (c) Qinwei Zhang (q.zhang@amc.uva.nl) 2017 @AMC Amsterdam
 
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
-function image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars)
+function image_corrected = DPsti_TSE_phase_error_cor_large_scale(ima_k_spa_data, TSE, TSE_sense_map, nav_data, pars)
 
 %% Data check
 
@@ -39,66 +41,7 @@ TSE.Ix_dim = TSE.Ixrange(2) - TSE.Ixrange(1) + 1;
 TSE.Iy_dim = TSE.Iyrange(2) - TSE.Iyrange(1) + 1;  %max_ky * 2 + 1;
 TSE.Iz_dim = TSE.Izrange(2) - TSE.Izrange(1) + 1;
 
-%% Preprocessing on kspace data for b=0
-calc_b0 = 0; %input('calculate b0?(1/0):');
-if(calc_b0)
-    disp('Preprocessing on kspace data for b=0');
-    if(isempty(pars.b0_shots))
-        b0_shots_range = 1:shots_per_dyn; %by default, the first dynamic
-    else
-        b0_shots_range = pars.b0_shots;
-    end
-    
-    tic;
-    
-    kspa_b0 = sort_k_spa_sh_by_sh(ima_k_spa_data, b0_shots_range, TSE, pars);
-    
-    kspa_b0_combshot = sum(kspa_b0, 5)./sum(abs(kspa_b0)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zeros average
-    kspa_b0_combshot(find(isnan(kspa_b0_combshot)))=0; kspa_b0_combshot(find(isinf(kspa_b0_combshot)))=0;
-    
-    im_b0_ch_by_ch=ifft3d(kspa_b0_combshot);
-    im_b0=sqrt(sum(abs(im_b0_ch_by_ch).^2, 4));
-    figure(1); montage(permute(abs(im_b0),[1 2 4 3]),'displayrange',[]); title('b0 images');
-    
-    clear kspa_b0_combshot
-    
-    toc;
-end
-%% Preprocessing on kspace data for nonb0
-
-
-disp('Preprocessing on kspace data for nonb0');
-
-if(isempty(pars.nonb0_shots))
-    nonb0_shots_range = 1: shots_per_dyn;
-else
-    nonb0_shots_range = pars.nonb0_shots;
-end
-
-% assert(sum(ismember(nonb0_shots_range, b0_shots_range))==0,'non_b0 shots overlap with b0 shots!')
-
-% nonb0_shots_range = b0_shots_range; %backdoor: for calculating b0 images
-
-tic;
-
-kspa_xyz = sort_k_spa_sh_by_sh(ima_k_spa_data, nonb0_shots_range, TSE, pars);
-
-kk = sum(kspa_xyz, 5)./ sum(abs(kspa_xyz)>0, 5); %4D b0 kspace [kx ky kz nc]; non-zero average
-kk(find(isnan(kk)))=0; kk(find(isinf(kk)))=0;
-
-im_nonb0_ch_by_ch=ifft3d(kk);
-im_nonb0=sqrt(sum(abs(im_nonb0_ch_by_ch).^2, 4));
-figure(2); montage(permute(abs(im_nonb0),[1 2 4 3]),'displayrange',[]); title('direct recon');
-clear kk pp
-
-%to hybrid space for 3D cases
-if(TSE.kz_dim>1)
-    clear kspa_x_yz;
-    kspa_x_yz = ifft1d(kspa_xyz);
-    clear kspa_xyz
-end
-
-toc
+nonb0_shots_range = pars.nonb0_shots;
 
 %% Preprocessing on sense data
 
@@ -193,19 +136,14 @@ disp('Preprocessing on phase error data');
 tic
 
 %ref shot: when k0 being acquired
-k0_idx = [floor(TSE.kx_dim/2)+1 floor(TSE.ky_dim/2)+1 floor(TSE.kz_dim/2)+1];
-for sh =1:length(nonb0_shots_range)
-    if(exist('kspa_xyz','var'))
-        if(abs(kspa_xyz(k0_idx(1),k0_idx(2),k0_idx(3), 1, sh))>0)
-            ref_shot = sh;
-        end
-    else
-        if(abs(kspa_x_yz(k0_idx(1),k0_idx(2),k0_idx(3), 1, sh))>0)
-            ref_shot = sh;
-        end
-    end
-    
-end
+nonb0_idx = find(ismember(TSE.shot_matched, nonb0_shots_range));
+ky_match_nonb0  = TSE.ky_matched(nonb0_idx);
+kz_match_nonb0  = TSE.kz_matched(nonb0_idx);
+shot_matched_nonb0 = TSE.shot_matched(nonb0_idx);
+ref_shot_exact = unique(shot_matched_nonb0(find((ky_match_nonb0 == 0)&(kz_match_nonb0 == 0))));
+ref_shot = find(ismember(ref_shot_exact, nonb0_shots_range))
+
+clear  nonb0_idx ky_match_nonb0 kz_match_nonb0 shot_matched_nonb0 ref_shot_exact
 
 %get nav_data;
 nav_im_1 = double(nav_data(:,:,:,nonb0_shots_range)); %b0_shots_range for b0 correction; default: nonb0_shots_range
@@ -216,7 +154,7 @@ nav_im_1_diff(find(isnan(nav_im_1_diff)))=0; nav_im_1_diff(find(isinf(nav_im_1_d
 
 %set nav_im_1_diff phase to 0 for unreliable locations (optional and careful)
 % unreliable_location = find(abs(nav_im_1)<1e4);
-% nav_im_1_diff(unreliable_location)=abs(nav_im_1_diff(unreliable_location)); 
+% nav_im_1_diff(unreliable_location)=abs(nav_im_1_diff(unreliable_location));
 
 
 for sh = 1:size(nav_im_1_diff,4)
@@ -285,25 +223,76 @@ phase_error_3D = (bsxfun(@times, phase_error_3D, TSE.sense_mask));  %mask
 
 assert(sum(size(phase_error_3D)==[TSE.Ix_dim TSE.Iy_dim TSE.Iz_dim length(nonb0_shots_range)])==4,'Phase Error map size is wrong!')
 
+clear nav_im_3 nav_im_2_masked
+
 toc
+
+
+%% Preprocessing on kspace data for nonb0
+
+
+disp('Preprocessing on kspace data for nonb0');
+tic
+
+% assert(sum(ismember(nonb0_shots_range, b0_shots_range))==0,'non_b0 shots overlap with b0 shots!')
+
+% nonb0_shots_range = b0_shots_range; %backdoor: for calculating b0 images
+
+% pad kx dim
+
+padding_size = TSE.kx_dim-size(ima_k_spa_data,1);
+padding_left = ceil(padding_size/2);
+kx_sort_range = padding_left+1:padding_left+size(ima_k_spa_data,1);
+
+
+ima_k_spa_data_kx_pad = zeros(TSE.kx_dim, size(ima_k_spa_data,2));
+ima_k_spa_data_kx_pad(kx_sort_range,:)  = ima_k_spa_data;
+
+ima_hybrid_k_spa_data = ifft1d(ima_k_spa_data_kx_pad);
+
+clear ima_k_spa_data ima_k_spa_data_kx_pad
+
+toc
+
+
 %% msDWI recon
 disp('recon');
 image_corrected = zeros(TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim);
 tic;
-if (TSE.Iz_dim>1)
-    %% 3D recon
-    recon_x = pars.recon_x_locs;
-%     recon_x = 200;
-    for x_idx = 1:length(recon_x)
+
+% 3D recon (always 3D recon for large scale cases)
+
+
+recon_x = pars.recon_x_locs;
+%     recon_x = 300;
+for x_idx = 1:length(recon_x)
+    
+    recon_x_loc = recon_x(x_idx);
+    
+    
+    %=========select phase_error ============================================
+    phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
+    %=========End ============================================
+    
+    if (sum(abs(phase_error(:))) == 0) % currect recon_x_loc is out of the SENSE make. nothing to recon
+        image_corrected(recon_x_loc,:,:) = zeros(TSE.Iy_dim, TSE.Iz_dim);
+    else
         
-        recon_x_loc = recon_x(x_idx);
+        % display phase error------------------
+        figure(411);
+        montage(permute(squeeze(angle(phase_error)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet; title(['phase error map for x loc: ',num2str(recon_x_loc)]);
+        %---------------------------------------
         
-        %=========select data. fixed=============================================
-        kspa = permute(kspa_x_yz(recon_x_loc, :, :, :, :),[2 3 4 5 1]);
+        
+        % [1]
+        %=========select data. and sense map=====================================
+        kspa = sort_k_spa_sh_by_sh_large_scale(ima_hybrid_k_spa_data(recon_x_loc,:), nonb0_shots_range, TSE, pars);
+        kspa = permute(kspa,[2 3 4 5 1]);
         sense_map = permute(sense_map_3D(recon_x_loc,:,:,:),[2 3 4 1]);
-        phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
+        
         %========================================================================
         
+        % [2]
         % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
         if(exist('sense_Psi', 'var'))
             for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
@@ -329,97 +318,35 @@ if (TSE.Iz_dim>1)
         end
         % ========================================================================================
         
-        % display phase error------------------
-        figure(411);
-        montage(permute(squeeze(angle(phase_error)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet; title('phase error map');
-        %---------------------------------------
-        
-        
+                
+        % [3]
         image_corrected(recon_x_loc,:,:) = msDWIrecon(kspa, sense_map, phase_error, pars.msDWIrecon);
-        
         image_corrected(isnan(image_corrected)) = 0;
         
-        %display
-        figure(101);
-        if(exist('im_b0'))
-            subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0');
-        end
-        subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
-        subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-        drawnow();
-
-        %check nav image & TSE image consistance
-        figure(102);
-        subplot(231);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('reon'); 
-        subplot(232);imshow(squeeze(mean(abs(nav_im_2(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');  
-        subplot(233);imshow(squeeze(mean(abs(nav_im_2_masked(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');  
-        subplot(234);imshow(squeeze(angle(image_corrected(recon_x_loc,:,:))),[-pi pi]); title('angle recon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-        subplot(235);imshow(squeeze(angle(nav_im_2(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-        subplot(236);imshow(squeeze(angle(nav_im_2_masked(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-
-        drawnow();
-        
     end
-    
     
     %display
-    if(1) %big screen
-        figure(109);
-        if(exist('im_b0','var'))
-            subplot(141); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
-        end
-        subplot(142); montage(permute(abs(im_nonb0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
-        subplot(143); montage(permute(abs(image_corrected(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
-    else
-        if(exist('im_b0','var'))
-            figure(109); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');
-        end
-        figure(110); montage(permute(abs(im_nonb0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('direct recon');
-        figure(111); montage(permute(abs(image_corrected(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
-    end
-else
-    %% 2D recon: remove 3rd dimension
+    figure(101);
+    imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+    drawnow();
     
+    %check nav image & TSE image consistance
+    figure(102);
+    subplot(221);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('reon');
+    subplot(222);imshow(squeeze(mean(abs(nav_im_2(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');
+    subplot(223);imshow(squeeze(angle(image_corrected(recon_x_loc,:,:))),[-pi pi]); title('angle recon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+    subplot(224);imshow(squeeze(angle(nav_im_2(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
     
-    ksap = permute(kspa_xyz,[1 2 4 5 3]);
-    sense_map = squeeze(sense_map_3D);
-    
-    % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
-    if(exist('sense_Psi', 'var'))
-        for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
-            sense_Psi(t,t) = real(sense_Psi(t,t));
-        end
-        L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-        L_inv = inv(L);
-        for c = 1:size(sense_Psi,1)
-            %recombine sense map
-            sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
-            %recombine kspa map
-            kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
-        end
-        figure(401);
-        subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
-        subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
-        
-        sense_map =  sense_map_orthocoil;
-        kspa = kspa_orthocoil;
-        clear sense_map_orthocoil kspa_orthocoil
-        %renormalize sense
-        sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
-    end
-    % ========================================================================================
-    
-    
-    image_corrected = msDWIrecon(ksap, sense_map, phase_error_3D, pars.msDWIrecon);
-    %     image_corrected = msDWIrecon(permute(kspa_all(:,:,:,:,[1:length(b0_shots_range)]),[1 2 4 5 3]), squeeze(sense_map_3D), phase_error_3D, pars.msDWIrecon);
-    %display
-    figure(120);
-    subplot(141); imshow(abs(im_b0),[]); title('b0');
-    subplot(142);  imshow(abs(im_nonb0),[]); title('b0'); title('direct recon');
-    subplot(143);  imshow(abs(image_corrected),[]); title('b0'); title('msDWIrecon');
-    
-    
+    drawnow();
     
 end
+
+
+%display
+
+figure(109);
+montage(permute(abs(image_corrected(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('msDWIrecon');
+
+
 toc
 end

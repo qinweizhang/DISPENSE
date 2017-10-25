@@ -1,6 +1,6 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_19_SND_brain')
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_24_SND_brain')
 %% trajectory calculation
 close all; clear; clc;
 trj_save_fn = 'traj_for_Sc6.mat';
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_19102017_1943531_9_2_wip_sc5_3d_snd_brain_4bV4.raw';
-sense_ref_fn = 'sn_19102017_1847383_1000_5_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sn_19102017_1844503_1000_2_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_24102017_1747246_4_2_wip_sc9_3d_snd_brain_4bV4.raw';
+sense_ref_fn = 'sn_24102017_1730053_1000_5_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_24102017_1726282_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc4.mat';
+trj_mat_fn = 'traj_for_Sc3_4.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -30,7 +30,7 @@ close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 offcenter_xy = [0 0]; 
-FOV_xy = [250 181.8182];
+FOV_xy = [250 164.7727];
 % nav_im_recon_nufft = [];
 dyn_recon = 1:dyn_nr;
 for d = 1:length(dyn_recon)
@@ -39,8 +39,8 @@ for d = 1:length(dyn_recon)
     disp(['dynamic: ',num2str(dyn)]);
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [32 32 18];  
-    recon_par.recon_dim  = [32 32 18];
+    recon_par.acq_dim = [42 42 13];  
+    recon_par.recon_dim  = [42 42 13];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = []; %or []: till the end;
@@ -84,7 +84,7 @@ for d = 1:length(dyn_recon)
     end
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
     nav_im_recon_nufft(:,:,:,:,:,dyn) = nav_im_recon_nufft_1dyn;
-    save(save_mat_fn, 'nav_im_recon_nufft'); 
+    save(save_mat_fn, 'nav_im_recon_nufft','-append'); 
     toc
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
@@ -132,8 +132,8 @@ TSE.SENSE_kx =1;
 TSE.SENSE_ky =2;
 TSE.SENSE_kz =1;
 
-TSE.kyrange = [-64 -1]; 
-TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
+TSE.kyrange = [-86 -1]; 
+TSE.kxrange = [-512 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 
 TSE.Ixrange = [ceil(TSE.kxrange(1).*TSE.SENSE_kx) -1];
 TSE.Iyrange = [ceil(TSE.kyrange(1).*TSE.SENSE_ky) -1];
@@ -150,7 +150,7 @@ pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-pars.recon_x_locs = 85:250;
+pars.recon_x_locs = 120:450;
 pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
 
@@ -190,13 +190,22 @@ clear sense_map_temp;
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
 save_mat_fn = 'Sc04.mat';
-for d = 1:2
+for d = 1:dyn_nr
+    tic
     d
-    pars.nonb0_shots = [1:51] + (d-1)*51;
-    result = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, conj(nav_data), pars);
+    pars.nonb0_shots = [1:109] + (d-1)*109;
+    
+%     result = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_sense_map, (nav_data), pars);
+
+    result = DPsti_TSE_phase_error_cor_large_scale(ima_k_spa_data, TSE, TSE_sense_map, (nav_data), pars);
     image_corrected(:,:,:,d)  = result;
 
      save(save_mat_fn,'image_corrected','-append');
+     
+     
+     elaps_t=toc;
+     msg = sprintf('10-24-SND-brain Sc04 data; dynamic %d finished; duration %f; ', d, elaps_t);
+     sendmail_from_yahoo('q.zhang@amc.nl','Matlab Message',msg);
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
 

@@ -155,6 +155,7 @@ MR_DPstiTSE.K2IP;
 MR_DPstiTSE.GridderNormalization;
 
 sense_recon = 0;
+sense_recon = input('SENSE unfold? ');
 if(sense_recon)
     if(virtual_coil_nr==0) %only for no coil compression
         % --------------Calculate SENSE object-------------
