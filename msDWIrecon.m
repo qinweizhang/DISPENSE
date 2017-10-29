@@ -17,23 +17,30 @@
 
 function image_corrected = msDWIrecon(kspa, sense_map, phase_error, pars)
 
-[ky_dim, kz_dim, nc, ns, n_type] = size(kspa);
-
-if (nc==1)
-    assert(length(size(sense_map)) == 2 && sum([ky_dim kz_dim]==size(sense_map)) ==  2); %sense_map size check
-else
-    assert(length(size(sense_map)) == 3 && sum([ky_dim kz_dim nc]==size(sense_map)) ==  3); %sense_map size check
-end
-
-
-if(ns > 1)
-    if(strcmp(pars.method, 'CG_SENSE_I')) %phase_error only used for CG
-        assert(length(size(phase_error)) == 4 && sum([ky_dim kz_dim 1 ns]==size(phase_error)) ==  4); %phase_error size check
+if(~iscell(kspa))
+    [ky_dim, kz_dim, nc, ns, n_type] = size(kspa);
+    
+    if (nc==1)
+        assert(length(size(sense_map)) == 2 && sum([ky_dim kz_dim]==size(sense_map)) ==  2); %sense_map size check
+    else
+        assert(length(size(sense_map)) == 3 && sum([ky_dim kz_dim nc]==size(sense_map)) ==  3); %sense_map size check
     end
-else
-    warning('This is a single-shot dataset!')
+    
+    
+    if(ns > 1)
+        if(strcmp(pars.method, 'CG_SENSE_I')) %phase_error only used for CG
+            assert(length(size(phase_error)) == 4 && sum([ky_dim kz_dim 1 ns]==size(phase_error)) ==  4); %phase_error size check
+        end
+    else
+        warning('This is a single-shot dataset!')
+    end
+else % kspa is a cell
+    
+    assert(strcmp(pars.method, 'LRT'));
+    assert(pars.LRT.mix_trajectory == 1);
+    disp('msDWIrecon is LRT with mixed trajectory: data checking ommitted!')
+    [ns, n_type] = size(kspa);
 end
-
 
 
 
@@ -78,7 +85,7 @@ elseif strcmp(pars.method, 'CG_SENSE_K')
     
     
 elseif strcmp(pars.method, 'POCS_ICE') %update phase map iteratively
-    %% POCS_ICE TODO
+    %% POCS_ICE 
      warning('Perform POCS_ICE reconstruction...no external phase error information is used...');
     assert(n_type==1);
 
@@ -87,7 +94,7 @@ elseif strcmp(pars.method, 'POCS_ICE') %update phase map iteratively
     
     
 elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
-    %% LRT TODO
+    %% LRT 
     warning('Perform LRT reconstruction...no external phase error information is used...');
     assert(n_type==2);
 

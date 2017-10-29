@@ -23,18 +23,55 @@ fprintf('       Amsterdam 2017      \n \n')
 %%
 assert(params.Lg<=params.L3*params.L4,'reduce spatial rank!'); 
 assert(~xor(isempty(params.nav_estimate_1),isempty(params.nav_estimate_2)),'Input either both or no subspaces!')
-res1=size(kspace,1);
-res2=size(kspace,2);
-tensorsize=size(kspace);
-imagesize=tensorsize; imagesize(3)=1; 
-unfoldedIsize=[size(kspace,1)*size(kspace,2),size(kspace,4)*size(kspace,5)];                %coil combined
-unfoldedKsize=[size(kspace,1)*size(kspace,2)*size(kspace,3),size(kspace,4)*size(kspace,5)];     %coils separate
-
+if(params.mix_trajectory)  %mix trajectory; kspace is a cell
+    res1  = size(sens,1);  res2 = size(sens,2);
+    imagesize = [res1, res2, 1, size(kspace,1), size(kspace,2)];
+    tensorsize = imagesize; tensorsize(3) = size(sens,3);
+    unfoldedIsize=[imagesize(1)*imagesize(2),imagesize(4)*imagesize(5)];                %coil combined
+    unfoldedKsize=[];     %coils separate
+        
+else %normal case; kspace is a 5-D array
+    res1=size(kspace,1);
+    res2=size(kspace,2);
+    tensorsize=size(kspace);
+    imagesize=tensorsize; imagesize(3)=1;
+    unfoldedIsize=[size(kspace,1)*size(kspace,2),size(kspace,4)*size(kspace,5)];                %coil combined
+    unfoldedKsize=[size(kspace,1)*size(kspace,2)*size(kspace,3),size(kspace,4)*size(kspace,5)];     %coils separate
+end
 %%
-% FIND MASK
-mask=squeeze(kspace(:,:,1,:,:))~=0;
-
 % >>>>>>>>>>>>>>>>>>>>RECON FROM HERE<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+% FIND MASK
+if(iscell(kspace))
+    mask = [];
+    %======Estimate on eigenvectors for SoSNav multi-shot Diffusion====================%
+    %navigator dim; first column
+    all_sosnav_k_data = cat(3, kspace{:,1});    %size: kx, ch, shots
+    all_sosnav_k_data = permute(all_sosnav_k_data, [3 1 2]);%size: shots, kx, ch 
+    S = all_sosnav_k_data(:,:);   %size: shots, kx*ch
+    % calculate singular value decomposition
+    [left_1,eigen_1,~]=svd(S,'econ');
+    params.eigenvals_1=diag(eigen_1);  %output for evaluation
+    %navigator estimate are first L left singular vectors
+    params.nav_estimate_1=left_1(:,1:params.L3);
+    
+    %b0 dim: first row
+    %convert 2D cartesian kspace b0 image to 1D spiral signal as navigator
+    im_b0 = ifft2d( kspace{1,2});
+    for c =1:size(im_b0, 3)
+        spiral_k_b0(:,c) = params.NUFFT_nav_1ch * im_b0(:,:,c);
+    end
+    nav_k_b0 = kspace{1,1};
+    S = cat(1, spiral_k_b0(:).', nav_k_b0(:).');   %size: shots, kx*ch
+    % calculate singular value decomposition
+    [left_2,eigen_2,~]=svd(S,'econ');
+    params.eigenvals_2=diag(eigen_2);  %output for evaluation
+    %navigator estimate are first L left singular vectors
+    params.nav_estimate_2=left_2(:,1:params.L4);
+    %=============================end=============================================%
+else %normal
+    mask=squeeze(kspace(:,:,1,:,:))~=0;
+end
 
 if isempty(params.nav_estimate_1)                  % subspace estimation 
     [Kx1,Ky1,Kx2,Ky2]=findSharedKpoints(mask,params);
@@ -55,18 +92,6 @@ if isempty(params.nav_estimate_1)                  % subspace estimation
     end
     [nav_estimate_2,params.eigenvals_2]= subspace_estimator_multicoil(squeeze(nav_parameter_dim2),params.L4);
     
-    
-    %     %======constrain on eigenvectors for multi-shot Diffusion====================%
-    %     % all non b0 navigator should have the same magnitude but different phase
-    %     %
-    %     nav_mag_nonb0 = mean(abs(nav_estimate_1(2:end,:)),1);
-    %     nav_mag_nonb0_repmat = repmat(nav_mag_nonb0, size(nav_estimate_1,1)-1, 1);
-    %     nav_mag_all = cat(1, abs(nav_estimate_1(1,:)), nav_mag_nonb0_repmat);
-    %     nav_estimate_1 = nav_mag_all.*exp(1i*angle(nav_estimate_1));
-    %
-    %     % nav and image should have the same phase for the same shot
-    %     nav_estimate_2(2,:) = abs(nav_estimate_2(2,:)).*exp(1i * angle(nav_estimate_2(1,:)));
-    %     %=============================end=============================================%
     
     
     params.nav_estimate_1=nav_estimate_1;
@@ -105,23 +130,38 @@ if params.normalize_sense %find out how it should be done...
 else sens_normalized=sens;
 end
 F=MCFopClass;
-set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)]);
+set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)], params.NUFFT_nav_sense, params.trj_length);
 
 %4 zero-filled recon
 
+if(iscell(kspace))
+    kspace_1 = LRT_cell_2_mat(kspace); %convert to same size and matrxi unfold
+    unfoldedKsize = size(kspace_1); clear kspace;
+    
+    P1_0=F'*(kspace_1);
+    P0=reshape(P1_0,imagesize); %1-unfolding of zero filled recon (what is the shape of this matrix?)
+    if params.scaleksp
+        [kspace,scaling]= scaleksp(kspace,P0); % scale kspace to ensure consistency over params;
+        params.Imref=params.Imref./scaling; %scale ref image with same scaling;
+        P1_0=F'*(kspace);
+        P0=reshape(P1_0,unfoldedIsize); %1-unfolding of zero filled recon (what is the shape of this matrix?)
+    end
+    kspace=reshape(kspace_1,tensorsize);
 
-P0=F'*(kspace);             
-P1_0=reshape(P0,unfoldedIsize); %1-unfolding of zero filled recon (what is the shape of this matrix?)
-
-if params.scaleksp
-    [kspace,scaling]= scaleksp(kspace,P0); % scale kspace to ensure consistency over params;
-    params.Imref=params.Imref./scaling; %scale ref image with same scaling;
-    P0=F'*(kspace);             
+else
+    
+    P0=F'*(kspace);
     P1_0=reshape(P0,unfoldedIsize); %1-unfolding of zero filled recon (what is the shape of this matrix?)
-end 
-
-kspace_1=reshape(kspace,unfoldedKsize);
-
+    
+    if params.scaleksp
+        [kspace,scaling]= scaleksp(kspace,P0); % scale kspace to ensure consistency over params;
+        params.Imref=params.Imref./scaling; %scale ref image with same scaling;
+        P0=F'*(kspace);
+        P1_0=reshape(P0,unfoldedIsize); %1-unfolding of zero filled recon (what is the shape of this matrix?)
+    end
+    
+    kspace_1=reshape(kspace,unfoldedKsize);
+end
 figure(21); subplot(211); imshow(abs(P0(:,:,1,params.subspacedim1,params.subspacedim2)),[]); axis off; title('zero filled recon of one frame')
 figure(21); subplot(212);  imshow(angle(P0(:,:,1,params.subspacedim1,params.subspacedim2)),[]); axis off; title('phase of zero filled recon of one frame')
 figure(22);subplot(311); immontage4D(mask,[0 1]); xlabel('Parameter 1'); ylabel('Parameter 2');

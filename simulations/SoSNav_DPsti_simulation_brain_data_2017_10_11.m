@@ -107,11 +107,11 @@ for x = 1:length(recon_x_range)
     pars.POCS.nufft = false;
     
     pars.LRT.Lg=3;
-    pars.LRT.L3=6;
-    pars.LRT.L4=2;
+    pars.LRT.L3=4;
+    pars.LRT.L4=1;
     pars.LRT.mu = 2e2;
     pars.LRT.beta = 1;
-    pars.LRT.lambda = 5e-1;
+    pars.LRT.lambda = 2e-2;
     
     pars.LRT.sparsity_transform='TV';
     pars.LRT.Imref=cat(3, repmat(squeeze(im_b0_ref(recon_x_loc,:,:,:)), [1 1 1 2]), repmat(squeeze(im_ref(recon_x_loc,:,:,:)), [1 1 length(recon_shot_range) 2]));
@@ -126,6 +126,7 @@ for x = 1:length(recon_x_range)
     pars.LRT.scaleksp=0;
     pars.LRT.niter = 5;
     LRT_nav_mask_enable = strcmp( pars.method, 'LRT');
+    lrt_nav_weight = 2e-2;
     
     %--------------------------------------------------------------
     %% UPDATE mask
@@ -174,7 +175,7 @@ for x = 1:length(recon_x_range)
     if(LRT_nav_mask_enable)
         LRT_nav_mask = zeros(size(mask));
         LRT_nav_mask(:,k0_idx(2)-10:k0_idx(2)+10,k0_idx(3)-8:k0_idx(3)+8,:,:) = 1;
-%         LRT_nav_mask = ones(size(mask));
+        %         LRT_nav_mask = ones(size(mask));
     end
     
     %% SELECT Phase error map
@@ -192,9 +193,10 @@ for x = 1:length(recon_x_range)
     
     %opt3
     %     phase_error_3D_current = ones(size( phase_error_3D(recon_x_loc,:,:,:,:)));
-
     
-    %% corrupt data
+    
+    
+    %% corrupt data, generate self-nav mask(POCS) and more
     
     %select channel ids
     
@@ -204,12 +206,9 @@ for x = 1:length(recon_x_range)
         sense_map_3D = ones(size(im_ref));
     end
     
-    
-    
-    
-    
     im_ref_ch =  bsxfun(@times, im_ref(recon_x_loc,:,:), sense_map_3D);
     im_b0_ref_ch =  bsxfun(@times, im_b0_ref(recon_x_loc,:,:), sense_map_3D);
+    kspa_b0ref_ch = fft2d(squeeze(im_b0_ref_ch)); %b0 image has higher intensity
     s = ceil(TSE.kz_dim/2);
     %     figure(121); montage(permute(squeeze(abs(im_ref_ch)),[1 2 4 3]),'displayrange',[]); title('reference image, channel by channel');
     im_pe = bsxfun(@times,im_ref_ch,phase_error_3D_current);
@@ -233,22 +232,6 @@ for x = 1:length(recon_x_range)
     
     kspa_xyz = bsxfun(@times, fft3d(im_pe), mask);
     
-    %---- for LRT separate navigators --------
-    if(~isempty(LRT_nav_mask)) 
-             
-        corrup_nav = 1;
-        if(corrup_nav)  %corrupt the navigator or load a corrupted nav
-            disp('navigator image is distorted!')
-            im_pe = spiral_nav_im(recon_x_loc,:,:,:,:);
-            im_pe = bsxfun(@times, sense_map_3D, permute(im_pe,[1 2 3 5 4]));
-        end
-        kspa_full = fft3d(im_pe); 
-        kspa_xyz_nav =  bsxfun(@times, kspa_full, LRT_nav_mask);
-    end
-    %------------------------------------------
-    
-    %     kspa_xyz = fft3d(im_pe);
-    clear im_pe;
     
     %add noise
     
@@ -263,9 +246,6 @@ for x = 1:length(recon_x_range)
     %to hybrid space
     clear kspa_x_yz;
     kspa_x_yz = ifft1d(kspa_xyz);
-    if(~isempty(LRT_nav_mask)) % for LRT separate navigator
-        kspa_x_yz_nav = ifft1d(kspa_xyz_nav);
-    end
     
     
     %direct recon
@@ -277,28 +257,60 @@ for x = 1:length(recon_x_range)
     %     figure(4); montage(permute(abs(im_recon_direct),[1 2 4 3]),'displayrange',[]); title('direct recon');
     clear  im_ch_by_ch k_combine_shots
     
-    if(~isempty(LRT_nav_mask)) % for LRT separate navigator
-        kk=sum(kspa_xyz_nav,5)./sum(abs(kspa_xyz_nav)>0,5); %non zeros average
-        kk(find(isnan(kk)))=0; kk(find(isinf(kk)))=0;
+    
+    
+    %% LRT navigator simulation
+    spiral_nav = 1;
+    
+    %---- for LRT separate navigators --------
+    if(~isempty(LRT_nav_mask))
         
-        kk_c=ifft3d(kk);
-        pp=sqrt(sum(abs(kk_c).^2, 4));
-        figure(41); montage(permute(abs(pp),[2 3 4 1]),'displayrange',[]); title('direct of navigator');
-        clear  pp ll kk_c
         
-        nav_im = ifft2d(squeeze(kspa_x_yz_nav));
+        if(spiral_nav)  %corrupt the navigator or load a corrupted nav
+            disp('>>>>>>>>>>>>>>>>>>>Spiral Navigator is generated based on images with phase error (im_pe) and trajectory!<<<<<<<<<<<<<<<<<<<<<<<')
+            trj_scale = 2*pi/max((max(trj_simulation_kx)-min(trj_simulation_kx)),(max(trj_simulation_ky)-min(trj_simulation_ky)));
+            trj_nufft = [trj_simulation_kx trj_simulation_ky] * trj_scale;
+            [~, ky, kz, nc, nshot] = size(im_pe);
+            A_nav = nuFTOperator(trj_nufft,[ky kz],ones(ky, kz),6);
+            for c = 1:nc
+                kspa_sosnav_b0ref_ch(:,c) = A_nav * squeeze(im_b0_ref_ch(1,:,:,c)); 
+                for s = 1:nshot
+                    kspa_x_yz_sosnav(:,c, s)= A_nav * squeeze(im_pe(1,:,:,c,s));
+                end
+            end
+            A_nav_sense = nuFTOperator(trj_nufft,[ky kz],squeeze(sense_map_3D),6);
+            disp('recon spiral nav....');
+            for s=1:nshot
+                %nav_im(:,:,1,s) = A_nav_sense' * col(kspa_x_yz_sosnav(:,:,s));
+                nav_im(:,:,1,s) = regularizedReconstruction(A_nav_sense, col(kspa_x_yz_sosnav(:,:,s)),@L2Norm,0.1,'maxit',5);
+            end
+            disp('Done');
+        else
+            disp('>>>>>>>>>>>>>>>>>>>Cartesian Navigator is generated based on images with phase error (im_pe) and LRT_nav_mask!<<<<<<<<<<<<<<<<<<<<<<<')
+            kspa_full = fft3d(im_pe);
+            kspa_xyz_nav =  bsxfun(@times, kspa_full, LRT_nav_mask);
+            
+            kspa_x_yz_nav = ifft1d(kspa_xyz_nav);
+            nav_im = ifft2d(squeeze(kspa_x_yz_nav));
+            
+            %calc b0 nav and kspace as well
+            kspa_nav_b0ref_ch = kspa_b0ref_ch.*squeeze(abs(kspa_x_yz_nav(:,:,:,:,1))>0);
+        end
+            
+        %----disp----%
         figure(411);
-        subplot(121);montage(permute(squeeze(abs(nav_im(:,:,1,:))),[1 2 4 3]),'displayrange',[]); title('all nav images mag.')
-        subplot(122);montage(permute(squeeze(abs(LRT_nav_mask)),[1 2 4 3]),'displayrange',[]); title('mask')
-        figure(412); 
-        nav_im_diff = bsxfun(@rdivide, nav_im, nav_im(:,:,:,1)); 
+        subplot(131);montage(permute(squeeze(abs(nav_im(:,:,1,:))),[1 2 4 3]),'displayrange',[]); title('all nav images mag.')
+        subplot(132);imshow(abs(squeeze(im_pe(1,:,:,1,1))),[]);
+        subplot(133);montage(permute(squeeze(abs(LRT_nav_mask)),[1 2 4 3]),'displayrange',[]); title('mask')
+        figure(412);
+        nav_im_diff = bsxfun(@rdivide, nav_im, nav_im(:,:,:,1));
         nav_im_diff(find(isnan(nav_im_diff)+isinf(nav_im_diff)))=0;
         subplot(121); montage(permute(squeeze(angle(nav_im_diff(:,:,1,:))),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet;  title('all nav images phase.')
-        phase_error_3D_current_diff = bsxfun(@rdivide, phase_error_3D_current, phase_error_3D_current(:,:,:,:,1)); 
+        phase_error_3D_current_diff = bsxfun(@rdivide, phase_error_3D_current, phase_error_3D_current(:,:,:,:,1));
         phase_error_3D_current_diff(find(isnan(phase_error_3D_current_diff)+isinf(phase_error_3D_current_diff)))=0;
         subplot(122); montage(permute(squeeze(angle(phase_error_3D_current_diff)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet;  title('true phase error')
+        
     end
-    
     
     
     %% recon
@@ -319,21 +331,46 @@ for x = 1:length(recon_x_range)
     phase_error_3D_current = permute(normalize_sense_map(permute(phase_error_3D_current,[1 2 4 3])),[5 1 2 3 4]); %miss use normalize_sense_map
     
     
-    %=========select data. fixed=============================================
-    kspa = permute(kspa_x_yz(1, :, :, :, recon_shot_range),[2 3 4 5 1]);
-    kspa_bart =  sum(kspa,4)./sum(abs(kspa)>0,4); kspa_bart(find(isnan(kspa_bart)))=0; kspa_bart(find(isinf(kspa_bart)))=0;
-    if(strcmp( pars.method, 'LRT')) % for LRT separate navigator
-        %cat navigator
-        kspa = cat(5, permute(kspa_x_yz_nav(1, :, :, :,  recon_shot_range),[2 3 4 5 1]), kspa);
-        %cat "b0" info into the first row
-        kspa_b0ref_ch = fft2d(squeeze(im_b0_ref_ch)); %b0 image has higher intensity
-        nav_b0ref_ch = kspa_b0ref_ch.*squeeze(abs(kspa_x_yz_nav(:,:,:,:,1))>0);
-        kspa = cat(4, cat(5, nav_b0ref_ch, kspa_b0ref_ch), kspa);
-        
-    end
+    %=========select data. =====================================================
     sense_map = permute(sense_map_3D(1,:,:,:),[2 3 4 1]);
     phase_error = permute(squeeze(phase_error_3D_current(1,:,:,:, recon_shot_range)),[1 2 4 3]);
+    kspa = permute(kspa_x_yz(1, :, :, :, recon_shot_range),[2 3 4 5 1]);
     %========================================================================
+   
+    %=====kspa for LRT is different=============================================
+    clear kspa
+    kspa_temp = permute(kspa_x_yz(1, :, :, :, recon_shot_range),[2 3 4 5 1]);
+    %bart cs recon ref
+    kspa_bart =  sum(kspa_temp,4)./sum(abs(kspa_temp)>0,4); kspa_bart(find(isnan(kspa_bart)))=0; kspa_bart(find(isinf(kspa_bart)))=0; 
+    
+    % for LRT, cat navigator
+    if(strcmp( pars.method, 'LRT'))        
+        if(spiral_nav) %spiral nav + cartesian images
+            %%
+            pars.LRT.mix_trajectory = 1;
+            pars.LRT.NUFFT_nav_sense = nuFTOperator(trj_nufft,[size(sense_map,1) size(sense_map,2)],squeeze(sense_map),6);
+            pars.LRT.NUFFT_nav_1ch = nuFTOperator(trj_nufft,[size(sense_map,1) size(sense_map,2)],ones(size(sense_map,1), size(sense_map,2)),6);
+            pars.LRT.trj_length = length(trj_nufft);
+            
+            for idx1 =1:length(recon_shot_range)
+                for idx2=1:2
+                    if(idx2==1) %nav colume
+                        kspa{idx1,idx2} =  kspa_x_yz_sosnav(:,:,recon_shot_range(idx2));
+                    else %tse colume
+                        kspa{idx1,idx2} =  kspa_temp(:,:,:,recon_shot_range(idx2));
+                    end
+                end
+            end
+            kspa_b0{1,1} =  kspa_sosnav_b0ref_ch;
+            kspa_b0{1,2} =  kspa_b0ref_ch;
+            kspa = cat(1, kspa_b0, kspa);
+        else  %catesian nav
+            kspa = cat(5, permute(kspa_x_yz_nav(1, :, :, :,  recon_shot_range) * lrt_nav_weight,[2 3 4 5 1]), kspa_temp);
+            %cat "b0" info into the first row
+            kspa = cat(4, cat(5, kspa_nav_b0ref_ch * lrt_nav_weight, kspa_b0ref_ch), kspa);
+        end
+    end
+    
     
     
     

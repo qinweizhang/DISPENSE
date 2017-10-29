@@ -5,10 +5,10 @@ fprintf('Making LRT profile \n')
 fprintf('--------------------\n \n')
 
 %%%%%%%%%%%% PARAMETERS TO CHANGE%%%%%%%%%%%%%%%%%%%%%%%
-nDim1=26; % TSE dimensions/DTI
-nDim2=2; % T2-prep 
-ky=128; 
-kz=68; 
+nDim1=50; % TSE dimensions/DTI
+nDim2=4; % T2-prep 
+ky=108; 
+kz=66; 
 
 dim1_bigctr=1; % dimension number of fully sampled center (param dimension 1)
 dim2_bigctr=1; % dimension number of fully sampled center (param dimension 1)
