@@ -52,9 +52,12 @@ else
         tse_k = reshape(k_data_4d(:,:,:,2),a.imsize(1), a.imsize(2), a.ncoils, a.dimsize(1));
         
         % k-space --> image-space
+        %         parfor s = 1:size(nav_k, 3)
         for s = 1:size(nav_k, 3)
             nav_i(:,:,1,s) = a.NUFFT_op' * col(nav_k(:,:,s));
         end
+        nav_i = nav_tse_ima_up_sample(nav_i, a.imsize, abs(a.sens(:,:,1))>0);
+        
         tse_i = S_adj(F_adj(tse_k));
         
         res = cat(5, nav_i, tse_i);
@@ -68,8 +71,11 @@ else
         tse_i = ima(:,:,:,:,2);
         
         %image --> k-space
+        nav_k_high_res = fft2d(nav_i);
+        nav_k_low_res = tse_nav_kspa_down_sample(nav_k_high_res, a.nav_dim);
+        nav_i_low_res = ifft2d(nav_k_low_res);
         for s = 1:size(nav_i, 4)
-            nav_k(:,:,s) = reshape(a.NUFFT_op * nav_i(:,:,:,s), a.trj_length, a.ncoils);
+            nav_k(:,:,s) = reshape(a.NUFFT_op * nav_i_low_res(:,:,s), a.trj_length, a.ncoils);
         end
         tse_k=F_for(S_for(tse_i));
         

@@ -1,5 +1,5 @@
 %==========DPsti-TSE nonrigid motion correction simulation============
-cd('/home/qzhang/lood_storage/divi/Users/qzhang/SoSND/SoSND/simulations/brain_test_data')
+cd(['/home/',getenv('USER'),'/lood_storage/divi/Ima/parrec/Kerry/Data/LRT_SoSNav_simulation_data'])
 clear; close all; clc
 load('test_data_10_11.mat')  %  test_data_09_24
 
@@ -75,7 +75,7 @@ close all
 load_default = false;
 load_sparse_profile = ~load_default;
 
-noiselevel = 0;
+noiselevel = 0.3;
 
 
 image_corrected = zeros(size(im_ref));
@@ -84,8 +84,9 @@ simulate_ky_sense_2 = false;
 simulate_kz_sense_2 = false;
 
 ch_id = [1:10];
-recon_shot_range = 1:26;
-recon_x_range = 190; %130:170;
+cs_prof_per_shot = 60;
+recon_shot_range = 1:5;  %max 26
+recon_x_range = 180; %130:170;
 for x = 1:length(recon_x_range)
     %% Set recon parameters
     
@@ -111,11 +112,11 @@ for x = 1:length(recon_x_range)
     pars.LRT.L4=1;
     pars.LRT.mu = 2e2;
     pars.LRT.beta = 1;
-    pars.LRT.lambda = 2e-2;
+    pars.LRT.lambda = 4e-2;
     
     pars.LRT.sparsity_transform='TV';
     pars.LRT.Imref=cat(3, repmat(squeeze(im_b0_ref(recon_x_loc,:,:,:)), [1 1 1 2]), repmat(squeeze(im_ref(recon_x_loc,:,:,:)), [1 1 length(recon_shot_range) 2]));
-    pars.LRT.x=15;
+    pars.LRT.x=20;
     pars.LRT.y=88;
     pars.LRT.increase_penalty_parameters=false;
     pars.LRT.inspectLg=false;
@@ -124,7 +125,7 @@ for x = 1:length(recon_x_range)
     pars.LRT.G.precon=true;
     pars.LRT.G.maxiter = 10;
     pars.LRT.scaleksp=0;
-    pars.LRT.niter = 5;
+    pars.LRT.niter = 3;
     LRT_nav_mask_enable = strcmp( pars.method, 'LRT');
     lrt_nav_weight = 2e-2;
     
@@ -147,7 +148,7 @@ for x = 1:length(recon_x_range)
         sh_dim = length(recon_shot_range);
         ky_labels = sparse_ky_profile + ceil(TSE.ky_dim/2); %0-->TSE.ky_dim/2
         kz_labels = sparse_kz_profile + ceil(TSE.kz_dim/2); %0-->TSE.ky_dim/2
-        prof_per_shot = length(ky_labels)/sh_dim;
+        prof_per_shot = cs_prof_per_shot;
     end
     
     mask = [];
@@ -189,6 +190,7 @@ for x = 1:length(recon_x_range)
         phase_error_3D_current =  permute(spiral_nav_im(recon_x_loc,:,:,:,:),[1 2 3 5 4]);
         phase_error_3D_current = bsxfun(@rdivide, phase_error_3D_current, phase_error_3D_current(:,:,:,:,1));
         phase_error_3D_current(find(isnan(phase_error_3D_current)+isinf(phase_error_3D_current))) = 0;
+        phase_error_3D_current = phase_error_3D_current(:,:,:,:,recon_shot_range);
     end
     
     %opt3
@@ -206,7 +208,7 @@ for x = 1:length(recon_x_range)
         sense_map_3D = ones(size(im_ref));
     end
     
-    im_ref_ch =  bsxfun(@times, im_ref(recon_x_loc,:,:), sense_map_3D);
+    im_ref_ch =  bsxfun(@times, abs(im_ref(recon_x_loc,:,:)), sense_map_3D);
     im_b0_ref_ch =  bsxfun(@times, im_b0_ref(recon_x_loc,:,:), sense_map_3D);
     kspa_b0ref_ch = fft2d(squeeze(im_b0_ref_ch)); %b0 image has higher intensity
     s = ceil(TSE.kz_dim/2);
@@ -237,9 +239,6 @@ for x = 1:length(recon_x_range)
     
     if noiselevel>0
         kspa_xyz=kspa_xyz+(randn(size(kspa_xyz)).*mean(kspa_xyz(find(abs(kspa_xyz)>0))).*noiselevel).*(abs(kspa_xyz)>0);
-        if(~isempty(LRT_nav_mask)) % for LRT separate navigator
-            kspa_xyz_nav = kspa_xyz_nav+(randn(size(kspa_xyz_nav)).*mean(kspa_xyz_nav(find(abs(kspa_xyz_nav)>0))).*noiselevel).*(abs(kspa_xyz_nav)>0);
-        end
     end
     
     
@@ -273,11 +272,21 @@ for x = 1:length(recon_x_range)
             [~, ky, kz, nc, nshot] = size(im_pe);
             A_nav = nuFTOperator(trj_nufft,[ky kz],ones(ky, kz),6);
             for c = 1:nc
-                kspa_sosnav_b0ref_ch(:,c) = A_nav * squeeze(im_b0_ref_ch(1,:,:,c)); 
+                kspa_sosnav_b0ref_ch(:,c) = A_nav * squeeze(im_b0_ref_ch(1,:,:,c));
+                
+                %add noise
+                kspa_sosnav_b0ref_ch(:,c)= kspa_sosnav_b0ref_ch(:,c) + (randn(size(kspa_sosnav_b0ref_ch(:,c))).*mean(kspa_sosnav_b0ref_ch(:,c)).*noiselevel);
+                
                 for s = 1:nshot
                     kspa_x_yz_sosnav(:,c, s)= A_nav * squeeze(im_pe(1,:,:,c,s));
+                    
+                    %add noise
+                    kspa_x_yz_sosnav(:,c, s)= kspa_x_yz_sosnav(:,c, s) + (randn(size( kspa_x_yz_sosnav(:,c, s))).*mean( kspa_x_yz_sosnav(:,c, s)).*noiselevel);
                 end
             end
+            
+            
+            
             A_nav_sense = nuFTOperator(trj_nufft,[ky kz],squeeze(sense_map_3D),6);
             disp('recon spiral nav....');
             for s=1:nshot
@@ -293,8 +302,15 @@ for x = 1:length(recon_x_range)
             kspa_x_yz_nav = ifft1d(kspa_xyz_nav);
             nav_im = ifft2d(squeeze(kspa_x_yz_nav));
             
+            %add noise
+            kspa_xyz_nav = kspa_xyz_nav+(randn(size(kspa_xyz_nav)).*mean(kspa_xyz_nav(find(abs(kspa_xyz_nav)>0))).*noiselevel).*(abs(kspa_xyz_nav)>0);
+            
             %calc b0 nav and kspace as well
             kspa_nav_b0ref_ch = kspa_b0ref_ch.*squeeze(abs(kspa_x_yz_nav(:,:,:,:,1))>0);
+             %add noise
+            kspa_nav_b0ref_ch = kspa_nav_b0ref_ch+(randn(size(kspa_nav_b0ref_ch)).*mean(kspa_nav_b0ref_ch(find(abs(kspa_nav_b0ref_ch)>0))).*noiselevel).*(abs(kspa_nav_b0ref_ch)>0);
+            
+          
         end
             
         %----disp----%
@@ -355,9 +371,9 @@ for x = 1:length(recon_x_range)
             for idx1 =1:length(recon_shot_range)
                 for idx2=1:2
                     if(idx2==1) %nav colume
-                        kspa{idx1,idx2} =  kspa_x_yz_sosnav(:,:,recon_shot_range(idx2));
+                        kspa{idx1,idx2} =  kspa_x_yz_sosnav(:,:,recon_shot_range(idx1));
                     else %tse colume
-                        kspa{idx1,idx2} =  kspa_temp(:,:,:,recon_shot_range(idx2));
+                        kspa{idx1,idx2} =  kspa_temp(:,:,:,recon_shot_range(idx1));
                     end
                 end
             end

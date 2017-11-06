@@ -10,7 +10,7 @@ Phi=kron(nav_estimate_2,nav_estimate_1).';      %from subspaces Phi= kron(G^4,G^
 
 X=P*Phi'; 
 % [U,S,V] = svds(X,L1);
-[U,S,V] = svd(X); 
+[U,S,V] = svd(X, 'econ'); 
 
 G0=U(:,1:L1);                           % first Lg vectors from left-dominant  svd of P10 Psi^H
 

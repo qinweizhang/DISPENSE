@@ -35,13 +35,19 @@ hold on
 plot((abs(nav_k_spa_data(:,2,1,1))./max(abs(nav_k_spa_data(:,2,1,1)))),'r')
 title('signal vs time points');legend('trajectory distance','abs(signal)')
 
-
-if(isempty(recon_par.end_point))
-    recon_par.end_point = length(trj_meas_kx);
+selected_point = 1:length(trj_meas_kx);
+if(isfield(recon_par, 'end_point') && isfield(recon_par, 'skip_point'))
+    if(isempty(recon_par.end_point))
+        recon_par.end_point = length(trj_meas_kx);
+    end 
+    selected_point = recon_par.skip_point+1:recon_par.end_point;
 end
-
-selected_point = recon_par.skip_point+1:recon_par.end_point;
-
+if(isfield(recon_par, 'selected_point') )
+     if(isempty(recon_par.selected_point))
+        recon_par.selected_point = 1:length(trj_meas_kx);
+    end 
+    selected_point = recon_par.selected_point;
+end
 %% Scale trajectory
 
 trj_meas_kx_t = squeeze(trj_meas_kx(selected_point,1));

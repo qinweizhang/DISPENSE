@@ -8,6 +8,7 @@ classdef MCFopClass < handle
         dimsize
         NUFFT_op
         trj_length
+        nav_dim
     end
     methods
         function set_phase(obj,phasemap)
@@ -24,9 +25,11 @@ classdef MCFopClass < handle
             if(nargin >= 5)
                 obj.NUFFT_op = varargin{1};
                 obj.trj_length = varargin{2};
+                obj.nav_dim = varargin{3};
             else
                 obj.NUFFT_op = [];
                 obj.trj_length = [];
+                obj.nav_dim = [];
             end
                 
             
