@@ -1,7 +1,7 @@
 
 clear; clc; close all
 % cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_05_SND')
-cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_11_05_SND')
+cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_10_27_SND_brain')
 addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\ESMRMB- non-Cartesian imaging\Non-Cartesian MRI Workshop Wuerzburg 2016\07 ZAHNEISEN - DAY 3\TUTORIAL\demoCode'))
 addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\spot-master')); vars; 
 %% trajectory calculation (OPTIONAL)
@@ -14,9 +14,9 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_05112017_1226064_2_2_wip_2d_snd_brain_3b_lrt_csV4.raw';
-sense_ref_fn = 'sn_05112017_1225311_1000_5_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sn_05112017_1223074_1000_2_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_27102017_1725555_8_2_wip_sc3_3d_snd_brain_4b_lrtV4.raw';
+sense_ref_fn = 'sn_27102017_1721547_1000_13_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_27102017_1716418_1000_10_wip_coilsurveyscanV4.raw';
 
 trj_mat_fn = 'traj_for_Sc2_5.mat';
 
@@ -38,7 +38,7 @@ parameter2read.dyn = [];
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange, TSE.VirtualCoilMartix] = ...
     TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn,parameter2read);
 
-figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [0 200]);
+figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), []);
 
 TSE
 assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not match with data size!')
@@ -48,7 +48,7 @@ disp('-finished- ');
 %% SET parameter
 
 %-------------TSE pars.-------------%
-TSE.kxrange = [-512 -1];
+TSE.kxrange = [-352 -1];
 TSE.dyn_dim = size(ima_kspa_sorted, 4);
 TSE.shot_per_dyn = max(TSE.shot_matched) / TSE.dyn_dim;
 
@@ -75,7 +75,7 @@ pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
 pars.recon_x_locs = 120:400; %80:270;
 pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
-pars.nonb0_shots = 25:75;
+pars.nonb0_shots = 51:100;
 if(isempty(pars.b0_shots))
     pars.b0_shots = 1:TSE.shot_per_dyn;
 end            
@@ -103,7 +103,6 @@ figure(3); montage(abs(TSE_sense_map),'displayrange',[]); xlabel('SENSE maps')
 %-------------------end---------------%
 
 %% Get b0 data
-pars.b0_shots=26:50; %TEMP
 %=======TSE imaging=======%
 b0_kpa = sort_k_spa_sh_by_sh_beta(ima_k_spa_data, pars.b0_shots, TSE, pars);
 %----combine shots directly; non-zero average in the shot dim
