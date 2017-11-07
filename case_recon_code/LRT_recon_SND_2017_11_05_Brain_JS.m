@@ -1,9 +1,9 @@
 
 clear; clc; close all
-% cd('/home/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_05_SND')
-cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_11_05_SND')
-addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\ESMRMB- non-Cartesian imaging\Non-Cartesian MRI Workshop Wuerzburg 2016\07 ZAHNEISEN - DAY 3\TUTORIAL\demoCode'))
-addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\spot-master'))
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_05_SND')
+% cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_11_05_SND')
+% addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\ESMRMB- non-Cartesian imaging\Non-Cartesian MRI Workshop Wuerzburg 2016\07 ZAHNEISEN - DAY 3\TUTORIAL\demoCode'))
+% addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\spot-master'))
 %% trajectory calculation (OPTIONAL)
 close all; clear; clc;
 trj_save_fn = 'traj_for_Sc8.mat';
@@ -109,7 +109,7 @@ b0_kpa = sort_k_spa_sh_by_sh_beta(ima_k_spa_data, pars.b0_shots, TSE, pars);
 %----combine shots directly; non-zero average in the shot dim
 b0_kspa = sum(b0_kpa, 5)./ sum(abs(b0_kpa)>0, 5); b0_kspa(find(isnan(b0_kspa)+isinf(b0_kspa))) = 0;
 b0_ima = bart('pics -RT:7:0:0.001 -d5', b0_kspa, TSE_sense_map);
-figure(2); imshow(abs(b0_ima),[]); xlabel('CS recon of b0 data: shot directly combined')
+figure(2); imshow(abs(b0_ima),[0 40]);% xlabel('CS recon of b0 data: shot directly combined')
 b0_kspa_full = squeeze(fft2d(bsxfun(@times, b0_ima, TSE_sense_map)));
 
 %=======Nav=======%
@@ -118,7 +118,7 @@ nav_b0_kspa = mean(nav_k_spa_data(:,:,pars.b0_shots),3);  %average of all shots
 
 size(b0_kspa_full) 
 size(nav_b0_kspa)
-clear b0_kpa b0_kspa b0_ima
+% clear b0_kpa b0_kspa b0_ima
 
 
 
@@ -150,7 +150,7 @@ end
 figure(4); montage(abs(nav_sense_map),'displayrange',[]); xlabel('NAV SENSE maps')
 %-------------------end---------------%
 
-
+%%
 %----------------NUFFT pars. ----------------%
 load(trj_mat_fn);
 chosen_sense_map = nav_sense_map;  % or tse_sense_map_unpaded nav_sense_map
@@ -162,17 +162,50 @@ recon_par.rescale_factor = recon_par.recon_dim./ recon_par.acq_dim;
 % trj_nufft = [trj_meas_kx trj_meas_ky] * scale_foctor_xy;
 
 scale_foctor_xy = [2*pi/(max(trj_meas_kx)-min(trj_meas_kx))./recon_par.rescale_factor(1),2*pi/(max(trj_meas_ky)-min(trj_meas_ky))./recon_par.rescale_factor(2)];
-trj_nufft = [trj_meas_kx.*scale_foctor_xy(1) trj_meas_ky.*scale_foctor_xy(2)];
+trj_nufft = [trj_meas_kx.*scale_foctor_xy(1)*0.94 trj_meas_ky.*scale_foctor_xy(2)*0.94];
 
 pars.LRT.mix_trajectory = 1;
+pars.LRT.nav_sense_map = chosen_sense_map;
 pars.LRT.NUFFT_nav_sense = nuFTOperator(trj_nufft,[size(chosen_sense_map,1) size(chosen_sense_map,2)],squeeze(chosen_sense_map),6);
 pars.LRT.NUFFT_nav_1ch = nuFTOperator(trj_nufft,[size(chosen_sense_map,1) size(chosen_sense_map,2)],ones(size(chosen_sense_map,1), size(chosen_sense_map,2)),6);
 pars.LRT.trj_length = length(trj_nufft);
 pars.LRT.nav_dim = recon_par.acq_dim;
 
+
+% ===================Cheating: manually shifted spiral image to match with TSE
+%============xy offset compensation: based on trajectory======================================================
+Offcenter_xy = [-8 -5]; 
+FOV_xy = [250 250];
+if(exist('Offcenter_xy','var'))
+    %---x offset
+    if(Offcenter_xy(1)~=0)
+        ima_offcenter_FOV_ratio = Offcenter_xy(1)/FOV_xy(1);
+        kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+        kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
+        kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
+        nav_nonb0_kspa_shifted = bsxfun(@times, nav_nonb0_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+        nav_b0_kspa_shifted = bsxfun(@times, nav_b0_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+        
+    end
+    %---y offset
+    if(Offcenter_xy(2)~=0)
+        ima_offcenter_FOV_ratio = Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
+        kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+        kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
+        kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
+        nav_nonb0_kspa_shifted = bsxfun(@times, nav_nonb0_kspa_shifted, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+        nav_b0_kspa_shifted = bsxfun(@times, nav_b0_kspa_shifted, exp(i*kspa_clibration_phase));          %add this calibration linear phase        
+    end
+end
+%===========================================================================================================
+
+
+
 %-------------try one nufft recon------------%
+for s = 1:25
 tic
-image = regularizedReconstruction(pars.LRT.NUFFT_nav_sense,col(nav_b0_kspa(:,:,1)),@L2Norm,0.5,'maxit',10,'tol', 1e-10);   %nav_b0_kspa nav_nonb0_kspa
+image= regularizedReconstruction(pars.LRT.NUFFT_nav_sense,col(nav_nonb0_kspa_shifted(:,:,s)),@L2Norm,0.5,'maxit',10,'tol', 1e-10);   %nav_b0_kspa | nav_nonb0_kspa | nav_nonb0_kspa_shifted | nav_b0_kspa_shifted
+nav_all_image(:,:,1,s)  = image;
 k_temp = fft2d(image);
 
 upsampling = 1; downsampling = ~upsampling;
@@ -181,17 +214,17 @@ if(upsampling)
     rs_command = sprintf('resize -c 0 %d 1 %d', size(tse_sense_map_unpaded,1), size(tse_sense_map_unpaded,2));
     k_interpo = bart(rs_command, k_temp);
     image_interpo = ifft2d(k_interpo).*(abs(tse_sense_map_unpaded(:,:,1))>0);
+    image_interpo = bart('resize -c 0 512 1 256', image_interpo );
     
 elseif(downsampling)  
     rs_command = sprintf('resize -c 0 %d 1 %d', size(nav_sense_map,1), size(nav_sense_map,2));
     k_interpo = bart(rs_command, k_temp);
     image_interpo = ifft2d(k_interpo).*(abs(nav_sense_map(:,:,1))>0);
-    image_interpo_2 = bart('resize -c 0 512 1 256', image_interpo );
 end
 
-figure(5); imagesc(abs(image_interpo_2)); axis off; axis equal; colormap gray
-figure(6); imagesc(angle(image_interpo_2),[-pi pi]); axis off; axis equal; colormap jet
-
+figure(5); imshow(abs(image_interpo),[]); axis off; axis equal; colormap gray
+figure(6); imshow(angle(image_interpo),[-pi pi]); axis off; axis equal; colormap jet
+end
 toc
 
 %% RECON
@@ -201,13 +234,13 @@ clear kspa
 for idx1 =1:length(pars.nonb0_shots)
     for idx2=1:2
         if(idx2==1) %nav colume
-            kspa{idx1,idx2} =  nav_nonb0_kspa(:,:,idx1);
+            kspa{idx1,idx2} =  nav_nonb0_kspa_shifted(:,:,idx1);
         else %tse colume
             kspa{idx1,idx2} =  nonb0_kpa(:,:,:,idx1);
         end
     end
 end
-kspa_b0{1,1} =  nav_b0_kspa;
+kspa_b0{1,1} =  nav_b0_kspa_shifted;
 kspa_b0{1,2} =  b0_kspa_full;
 kspa = cat(1, kspa_b0, kspa);
 
@@ -234,13 +267,12 @@ pars.LRT.G.precon=true;
 pars.LRT.G.maxiter = 10;
 pars.LRT.scaleksp=0;
 pars.LRT.niter = 3;
-LRT_nav_mask_enable = strcmp( pars.method, 'LRT');
-lrt_nav_weight = 2e-2;
+
     
 image_corrected = msDWIrecon(kspa, squeeze(TSE_sense_map), [], pars);  %no phase error maps needed here
 
 
-
+%==========================================FINISH===============================================================
 
 
 

@@ -72,7 +72,7 @@ else
         
         %image --> k-space
         nav_k_high_res = fft2d(nav_i);
-        nav_k_low_res = tse_nav_kspa_down_sample(nav_k_high_res, a.nav_dim);
+        nav_k_low_res = tse_nav_kspa_down_sample(nav_k_high_res, a.nav_dim, a.nav_mask);
         nav_i_low_res = ifft2d(nav_k_low_res);
         for s = 1:size(nav_i, 4)
             nav_k(:,:,s) = reshape(a.NUFFT_op * nav_i_low_res(:,:,s), a.trj_length, a.ncoils);

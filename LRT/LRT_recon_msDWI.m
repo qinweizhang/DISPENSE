@@ -58,7 +58,7 @@ if(iscell(kspace))
     %b0 dim: first row
     %convert 2D cartesian kspace b0 image to 1D spiral signal as navigator
      
-    kspace_low_res = tse_nav_kspa_down_sample(kspace{1,2}, params.nav_dim);
+    kspace_low_res = tse_nav_kspa_down_sample(kspace{1,2}, params.nav_dim, abs(params.nav_sense_map(:,:,1,1))>0);
     im_b0 = ifft2d( kspace_low_res);
     for c =1:size(im_b0, 3)
         spiral_k_b0(:,c) = params.NUFFT_nav_1ch * im_b0(:,:,c);
@@ -132,7 +132,7 @@ if params.normalize_sense %find out how it should be done...
 else sens_normalized=sens;
 end
 F=MCFopClass;
-set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)], params.NUFFT_nav_sense, params.trj_length, params.nav_dim);
+set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)], params.NUFFT_nav_sense, params.trj_length, params.nav_dim, abs(params.nav_sense_map(:,:,1,1))>0);
 
 %4 zero-filled recon
 

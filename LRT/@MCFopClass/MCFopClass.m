@@ -9,6 +9,7 @@ classdef MCFopClass < handle
         NUFFT_op
         trj_length
         nav_dim
+        nav_mask
     end
     methods
         function set_phase(obj,phasemap)
@@ -26,6 +27,7 @@ classdef MCFopClass < handle
                 obj.NUFFT_op = varargin{1};
                 obj.trj_length = varargin{2};
                 obj.nav_dim = varargin{3};
+                obj.nav_mask = varargin{4};
             else
                 obj.NUFFT_op = [];
                 obj.trj_length = [];

@@ -1,4 +1,4 @@
-function  kspace_low_res = tse_nav_kspa_down_sample(kspace_high_res, low_dim)
+function  kspace_low_res = tse_nav_kspa_down_sample(kspace_high_res, low_dim, mask)
 
 % [1] high resolution k space
 high_dim = size(kspace_high_res);
@@ -19,5 +19,9 @@ high_dim_square =  size(kspace_high_res_square);
 kx_range = floor(high_dim_square(1)-low_dim(1))/2+1 : floor(high_dim_square(1)-low_dim(1))/2+low_dim(1);
 ky_range = floor(high_dim_square(2)-low_dim(2))/2+1 : floor(high_dim_square(2)-low_dim(2))/2+low_dim(2);
 kspace_low_res = kspace_high_res_square(kx_range, ky_range, :);
+
+% [6]masked lowresolution K space
+kspace_low_res = fft2d(bsxfun(@times, ifft2d(kspace_low_res), mask));
+
     
 end

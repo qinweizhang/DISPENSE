@@ -136,7 +136,9 @@ size(nav_nonb0_kspa)
 
 %------------sense mask calc----------%
 nav_dim = [42 42 1];
-[nav_sense_map, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [nav_dim(1) nav_dim(2) nav_dim(3)], os);
+FOV = [250 250];
+nav_sense_os = [1 FOV_xy(1)/FOV_xy(2)];
+[nav_sense_map, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [nav_dim(1) nav_dim(2) nav_dim(3)], nav_sense_os);
 %----compress sense map and sense_Psi
 if(isfield(TSE, 'VirtualCoilMartix'))
     if(~isempty(TSE.VirtualCoilMartix))
@@ -231,6 +233,34 @@ LRT_nav_mask_enable = strcmp( pars.method, 'LRT');
 lrt_nav_weight = 2e-2;
     
 image_corrected = msDWIrecon(kspa, squeeze(TSE_sense_map), [], pars);  %no phase error maps needed here
+
+
+
+
+%===================================================FINISH=================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

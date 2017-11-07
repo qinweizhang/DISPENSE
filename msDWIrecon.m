@@ -106,7 +106,8 @@ elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
     subplot(224); montage(permute(squeeze(angle(image_corrected_LRT(:,:,1,:,2))),[1 2 4 3]),'displayrange',[-pi pi]); title('LRT recon of image column (phase.)')
     
     warning('!!! LRT reconed non-b0 images are averaged to obtain final results !!!');
-    image_corrected = mean(squeeze(image_corrected_LRT(:,:,1,2:end,2)),3);
+    image_corrected = image_corrected_LRT;
+%     image_corrected = mean(squeeze(image_corrected_LRT(:,:,1,2:end,2)),3);
 else
     error('recon method not recognized...')
 end
