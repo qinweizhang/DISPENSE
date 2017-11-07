@@ -1,9 +1,9 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_05_SND')
-% cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_11_05_SND')
-% addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\ESMRMB- non-Cartesian imaging\Non-Cartesian MRI Workshop Wuerzburg 2016\07 ZAHNEISEN - DAY 3\TUTORIAL\demoCode'))
-% addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\spot-master'))
+% cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_05_SND')
+cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_11_05_SND')
+addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\ESMRMB- non-Cartesian imaging\Non-Cartesian MRI Workshop Wuerzburg 2016\07 ZAHNEISEN - DAY 3\TUTORIAL\demoCode'))
+addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\spot-master'))
 %% trajectory calculation (OPTIONAL)
 close all; clear; clc;
 trj_save_fn = 'traj_for_Sc8.mat';
@@ -75,7 +75,7 @@ pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
 pars.recon_x_locs = 120:400; %80:270;
 pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
-pars.nonb0_shots = 26:50;
+pars.nonb0_shots = 51:75;
 if(isempty(pars.b0_shots))
     pars.b0_shots = 1:TSE.shot_per_dyn;
 end            
@@ -229,36 +229,43 @@ toc
 
 %% RECON
 
-clear kspa
+clear kspa kspa_1ch
 %-----range all kspace data---%
 for idx1 =1:length(pars.nonb0_shots)
     for idx2=1:2
         if(idx2==1) %nav colume
             kspa{idx1,idx2} =  nav_nonb0_kspa_shifted(:,:,idx1);
+            kspa_1ch{idx1,idx2} =  nav_nonb0_kspa_shifted(:,1,idx1);
+
         else %tse colume
             kspa{idx1,idx2} =  nonb0_kpa(:,:,:,idx1);
+            kspa_1ch{idx1,idx2} =  nonb0_kpa(:,:,1,idx1);
         end
     end
 end
 kspa_b0{1,1} =  nav_b0_kspa_shifted;
+kspa_b0_1ch{1,1} =  nav_b0_kspa_shifted(:,1);
 kspa_b0{1,2} =  b0_kspa_full;
+kspa_b0_1ch{1,2} =  b0_kspa_full(:,:,1);
+
 kspa = cat(1, kspa_b0, kspa);
+kspa_1ch = cat(1, kspa_b0_1ch, kspa_1ch);
 
 
 %------LRT pars---------%
 pars.method='LRT'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 
-pars.LRT.Lg=3;
+pars.LRT.Lg=6;
 pars.LRT.L3=4;
-pars.LRT.L4=1;
-pars.LRT.mu = 2e3;
+pars.LRT.L4=2;
+pars.LRT.mu = 2e4;
 pars.LRT.beta = 1;
-pars.LRT.lambda = 2e-2;
+pars.LRT.lambda = 2e-3;
 
 pars.LRT.sparsity_transform='TV';
 %     pars.LRT.Imref=cat(3, repmat(squeeze(im_b0_ref(recon_x_loc,:,:,:)), [1 1 1 2]), repmat(squeeze(im_ref(recon_x_loc,:,:,:)), [1 1 length(recon_shot_range) 2]));
-pars.LRT.x=88;  %loc in dim2
-pars.LRT.y=300; %loc in dim1
+pars.LRT.x=129;  %loc in dim2
+pars.LRT.y=238; %loc in dim1
 pars.LRT.increase_penalty_parameters=false;
 pars.LRT.inspectLg=false;
 pars.LRT.subspacedim1=1;
@@ -270,6 +277,20 @@ pars.LRT.niter = 3;
 
     
 image_corrected = msDWIrecon(kspa, squeeze(TSE_sense_map), [], pars);  %no phase error maps needed here
+
+figure(673); subplot(221); imshow((squeeze(abs(image_corrected(:,:,:,1,1)))),[]); title('b0 nav')
+subplot(222); imshow((squeeze(abs(image_corrected(:,:,:,1,2)))),[]); title('b0 TSE')
+figure(673); subplot(223); imshow((squeeze(angle(image_corrected(:,:,:,1,1)))),[]); title('phase b0 nav')
+subplot(224); imshow((squeeze(angle(image_corrected(:,:,:,1,2)))),[]); title('phase b0 TSE')
+
+figure(674); montage(permute(squeeze(abs(image_corrected(:,:,:,2:end,1))),[1 2 4 3]),'displayrange',[]); title('nav')
+figure(675); montage(permute(squeeze(abs(image_corrected(:,:,:,2:end,2))),[1 2 4 3]),'displayrange',[]); title('TSE')
+
+figure(676); montage(permute(squeeze(angle(image_corrected(:,:,:,2:end,1))),[1 2 4 3]),'displayrange',[]); colormap jet; title('phase nav')
+figure(677); montage(permute(squeeze(angle(image_corrected(:,:,:,2:end,2))),[1 2 4 3]),'displayrange',[]); colormap jet; title('phase TSE')
+
+% pars.LRT.NUFFT_nav_sense = pars.LRT.NUFFT_nav_1ch;
+% image_corrected = msDWIrecon(kspa_1ch, squeeze(ones(size(TSE_sense_map(:,:,1,1)))), [], pars);  %no phase error maps needed here
 
 
 %==========================================FINISH===============================================================

@@ -46,8 +46,9 @@ if(iscell(kspace))
     mask = [];
     %======Estimate on eigenvectors for SoSNav multi-shot Diffusion====================%
     %navigator dim; first column
-    all_sosnav_k_data = cat(3, kspace{:,1});    %size: kx, ch, shots
+    all_sosnav_k_data = cat(3, kspace{:,params.subspacedim1});    %size: kx, ch, shots
     all_sosnav_k_data = permute(all_sosnav_k_data, [3 1 2]);%size: shots, kx, ch 
+    all_sosnav_k_data=all_sosnav_k_data(:,50:end,1); %TEMP TEMP JASPER 7-11-2017
     S = all_sosnav_k_data(:,:);   %size: shots, kx*ch
     % calculate singular value decomposition
     [left_1,eigen_1,~]=svd(S,'econ');
