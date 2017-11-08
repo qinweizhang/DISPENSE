@@ -132,9 +132,15 @@ if params.normalize_sense %find out how it should be done...
     sens_normalized(find(isnan(sens_normalized))) = 0;
 else sens_normalized=sens;
 end
-F=MCFopClass;
-set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)], params.NUFFT_nav_sense, params.trj_length, params.nav_dim, abs(params.nav_sense_map(:,:,1,1))>0);
 
+F=MCFopClass;
+if(iscell(kspace))
+    
+    set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)], params.NUFFT_nav_sense, params.trj_length, params.nav_dim, abs(params.nav_sense_map(:,:,1,1))>0);
+else
+    set_MCFop_Params(F,(sens_normalized),[res1,res2],[tensorsize(4),tensorsize(5)]);
+    
+end
 %4 zero-filled recon
 
 if(iscell(kspace))

@@ -1,31 +1,19 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_05_SND')
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_07')
 % cd('L:\basic\divi\Ima\parrec\Kerry\Data\2017_11_05_SND')
 % addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\ESMRMB- non-Cartesian imaging\Non-Cartesian MRI Workshop Wuerzburg 2016\07 ZAHNEISEN - DAY 3\TUTORIAL\demoCode'))
 % addpath(genpath('L:\basic\divi\Projects\cosart\Matlab_Collection\spot-master'))
-%% trajectory calculation (OPTIONAL)
-close all; clear; clc;
-trj_save_fn = 'traj_for_Sc8.mat';
-trajectory_measure_distance = 15; %in mm
-spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
-disp('-finished- ');
+
 
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_05112017_1226064_2_2_wip_2d_snd_brain_3b_lrt_csV4.raw';
-sense_ref_fn = 'sn_05112017_1225311_1000_5_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sn_05112017_1223074_1000_2_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_07112017_1925319_2_2_wip_sc6_3d_lrt_snd_brain_4bV4.raw';
+sense_ref_fn = 'sn_07112017_1925031_1000_5_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_07112017_1916036_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc2_5.mat';
 
-%% Spiral Nav. data loading
-disp('spiral Nav. data loading...')
-[nav_k_spa_data, Nav_VirtualCoilMartix] = nav_kspa_data_read(data_fn);
-% nav_k_spa_data = nav_kspa_data_read(data_fn);
-
-disp('-finished- ');
 
 
 
@@ -36,7 +24,7 @@ disp(' TSE data sorting and default recon...')
 parameter2read.dyn = [];
 
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange, TSE.VirtualCoilMartix] = ...
-    TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn,parameter2read);
+    TSE_data_sortting_no_Nav(data_fn, sense_ref_fn, coil_survey_fn,parameter2read);
 
 figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), [0 200]);
 
@@ -48,8 +36,8 @@ disp('-finished- ');
 %% SET parameter
 
 %-------------TSE pars.-------------%
-TSE.kxrange = [-512 -1];
-TSE.dyn_dim = size(ima_kspa_sorted, 4);
+TSE.kxrange = [-480 -1];
+TSE.dyn_dim = size(ima_kspa_sorted, 5);
 TSE.shot_per_dyn = max(TSE.shot_matched) / TSE.dyn_dim;
 
 TSE.kx_dim = TSE.kxrange(2) - TSE.kxrange(1) + 1;
@@ -72,10 +60,10 @@ pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-pars.recon_x_locs = 120:400; %80:270;
+pars.recon_x_locs = 100:380; %80:270;
 pars.enabled_ch = 1:TSE.ch_dim;
-pars.b0_shots = []; %[] means first dynamic
-pars.nonb0_shots = 51:75;
+pars.b0_shots = 3*TSE.shot_per_dyn+ [1:TSE.shot_per_dyn]; %[]; %[] means first dynamic
+pars.nonb0_shots = 1:119;
 if(isempty(pars.b0_shots))
     pars.b0_shots = 1:TSE.shot_per_dyn;
 end            
@@ -99,25 +87,25 @@ tse_sense_map_paded = bart(rs_command, tse_sense_map_unpaded);
 
 TSE.sense_mask = abs(tse_sense_map_paded(:,:,:,1 ))>0;
 TSE_sense_map = tse_sense_map_paded; %[]; %calc again using get_sense_map_external
-figure(3); montage(abs(TSE_sense_map),'displayrange',[]); xlabel('SENSE maps')
+figure(3); montage(permute(squeeze(abs(TSE_sense_map(200,:,:,:))),[1 2 4 3]),'displayrange',[]); xlabel('SENSE maps')
 %-------------------end---------------%
 
 %% Get b0 data
 
 %=======TSE imaging=======%
-b0_kpa = sort_k_spa_sh_by_sh_beta(ima_k_spa_data, pars.b0_shots, TSE, pars);
+x_loc = 200;
+hybrid_k_spa_data = zeros(TSE.kx_dim, size(ima_k_spa_data,2));
+pad_left = floor((TSE.kx_dim - size(ima_k_spa_data,1))/2);
+hybrid_k_spa_data(pad_left+1:pad_left+size(ima_k_spa_data,1),:) = ifft1d(ima_k_spa_data);
+
+b0_kpa = sort_k_spa_sh_by_sh_3(squeeze(hybrid_k_spa_data(x_loc,:)), pars.b0_shots, TSE, pars);
 %----combine shots directly; non-zero average in the shot dim
-b0_kspa = sum(b0_kpa, 5)./ sum(abs(b0_kpa)>0, 5); b0_kspa(find(isnan(b0_kspa)+isinf(b0_kspa))) = 0;
-b0_ima = bart('pics -RT:7:0:0.001 -d5', b0_kspa, TSE_sense_map);
-figure(2); imshow(abs(b0_ima),[]);% xlabel('CS recon of b0 data: shot directly combined')
+b0_kspa_comb = sum(b0_kpa, 5)./ sum(abs(b0_kpa)>0, 5); b0_kspa_comb(find(isnan(b0_kspa_comb)+isinf(b0_kspa_comb))) = 0;
+b0_ima = bart('pics -RT:7:0:0.001 -d5', b0_kspa_comb, TSE_sense_map(x_loc,:,:,:));
+figure(2); imshow(abs(squeeze(b0_ima)),[]);% xlabel('CS recon of b0 data: shot directly combined')
 b0_kspa_full = squeeze(fft2d(bsxfun(@times, b0_ima, TSE_sense_map)));
 
-%=======Nav=======%
-nav_b0_kspa = mean(nav_k_spa_data(:,:,pars.b0_shots),3);  %average of all shots
-% nav_b0_kspa = nav_k_spa_data(:,:,pars.b0_shots(end));  %use one shot
-
 size(b0_kspa_full) 
-size(nav_b0_kspa)
 % clear b0_kpa b0_kspa b0_ima
 
 
@@ -125,147 +113,37 @@ size(nav_b0_kspa)
 %% Get non-b0 data
 
 %=======TSE imaging=======%
-nonb0_kpa = squeeze(sort_k_spa_sh_by_sh_beta(ima_k_spa_data, pars.nonb0_shots, TSE, pars));
+nonb0_kpa = sort_k_spa_sh_by_sh_3(squeeze(hybrid_k_spa_data(x_loc,:)), pars.nonb0_shots, TSE, pars);
 
-%=======Nav=======%
-nav_nonb0_kspa = squeeze(nav_k_spa_data(:,:,pars.nonb0_shots));
 
 size(nonb0_kpa) 
-size(nav_nonb0_kspa)
 
 
 
-%% Get NAV SENSE maps  + SET more parameters 
-
-%------------sense mask calc----------%
-nav_dim = [42 42 1];
-[nav_sense_map, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [nav_dim(1) nav_dim(2) nav_dim(3)], os);
-%----compress sense map and sense_Psi
-if(isfield(TSE, 'VirtualCoilMartix'))
-    if(~isempty(TSE.VirtualCoilMartix))
-        [nav_sense_map, TSE.sense_Psi] = compress_sense_map_Psi(TSE.VirtualCoilMartix, nav_sense_map,  TSE.sense_Psi);
-    end
-end
-
-figure(4); montage(abs(nav_sense_map),'displayrange',[]); xlabel('NAV SENSE maps')
-%-------------------end---------------%
-
-%%
-%----------------NUFFT pars. ----------------%
-load(trj_mat_fn);
-chosen_sense_map = nav_sense_map;  % or tse_sense_map_unpaded nav_sense_map
-recon_par.recon_dim = [size(chosen_sense_map,1) size(chosen_sense_map,2)];
-recon_par.acq_dim = [42 42];  %<<<<<<<<<<<<input this
-recon_par.rescale_factor = recon_par.recon_dim./ recon_par.acq_dim;
-
-% scale_foctor_xy = max(2*pi/(max(trj_meas_kx)-min(trj_meas_kx))./recon_par.rescale_factor(1),2*pi/(max(trj_meas_ky)-min(trj_meas_ky))./recon_par.rescale_factor(2));
-% trj_nufft = [trj_meas_kx trj_meas_ky] * scale_foctor_xy;
-
-scale_foctor_xy = [2*pi/(max(trj_meas_kx)-min(trj_meas_kx))./recon_par.rescale_factor(1),2*pi/(max(trj_meas_ky)-min(trj_meas_ky))./recon_par.rescale_factor(2)];
-trj_nufft = [trj_meas_kx.*scale_foctor_xy(1)*0.94 trj_meas_ky.*scale_foctor_xy(2)*0.94];
-
-pars.LRT.mix_trajectory = 1;
-pars.LRT.nav_sense_map = chosen_sense_map;
-pars.LRT.NUFFT_nav_sense = nuFTOperator(trj_nufft,[size(chosen_sense_map,1) size(chosen_sense_map,2)],squeeze(chosen_sense_map),6);
-pars.LRT.NUFFT_nav_1ch = nuFTOperator(trj_nufft,[size(chosen_sense_map,1) size(chosen_sense_map,2)],ones(size(chosen_sense_map,1), size(chosen_sense_map,2)),6);
-pars.LRT.trj_length = length(trj_nufft);
-pars.LRT.nav_dim = recon_par.acq_dim;
 
 
-% ===================Cheating: manually shifted spiral image to match with TSE
-%============xy offset compensation: based on trajectory======================================================
-Offcenter_xy = [-8 -5]; 
-FOV_xy = [250 250];
-if(exist('Offcenter_xy','var'))
-    %---x offset
-    if(Offcenter_xy(1)~=0)
-        ima_offcenter_FOV_ratio = Offcenter_xy(1)/FOV_xy(1);
-        kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
-        kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
-        kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
-        nav_nonb0_kspa_shifted = bsxfun(@times, nav_nonb0_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
-        nav_b0_kspa_shifted = bsxfun(@times, nav_b0_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
-        
-    end
-    %---y offset
-    if(Offcenter_xy(2)~=0)
-        ima_offcenter_FOV_ratio = Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
-        kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
-        kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
-        kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
-        nav_nonb0_kspa_shifted = bsxfun(@times, nav_nonb0_kspa_shifted, exp(i*kspa_clibration_phase));          %add this calibration linear phase
-        nav_b0_kspa_shifted = bsxfun(@times, nav_b0_kspa_shifted, exp(i*kspa_clibration_phase));          %add this calibration linear phase        
-    end
-end
-%===========================================================================================================
-
-
-
-%-------------try one nufft recon------------%
-for s = 1:25
-tic
-image= regularizedReconstruction(pars.LRT.NUFFT_nav_sense,col(nav_nonb0_kspa_shifted(:,:,s)),@L2Norm,0.5,'maxit',10,'tol', 1e-10);   %nav_b0_kspa | nav_nonb0_kspa | nav_nonb0_kspa_shifted | nav_b0_kspa_shifted
-nav_all_image(:,:,1,s)  = image;
-k_temp = fft2d(image);
-
-upsampling = 1; downsampling = ~upsampling;
-
-if(upsampling)
-    rs_command = sprintf('resize -c 0 %d 1 %d', size(tse_sense_map_unpaded,1), size(tse_sense_map_unpaded,2));
-    k_interpo = bart(rs_command, k_temp);
-    image_interpo = ifft2d(k_interpo).*(abs(tse_sense_map_unpaded(:,:,1))>0);
-    image_interpo = bart('resize -c 0 512 1 256', image_interpo );
-    
-elseif(downsampling)  
-    rs_command = sprintf('resize -c 0 %d 1 %d', size(nav_sense_map,1), size(nav_sense_map,2));
-    k_interpo = bart(rs_command, k_temp);
-    image_interpo = ifft2d(k_interpo).*(abs(nav_sense_map(:,:,1))>0);
-end
-
-figure(5); imshow(abs(image_interpo),[]); axis off; axis equal; colormap gray
-figure(6); imshow(angle(image_interpo),[-pi pi]); axis off; axis equal; colormap jet
-end
-toc
 
 %% RECON
 
-clear kspa kspa_1ch
-%-----range all kspace data---%
-for idx1 =1:length(pars.nonb0_shots)
-    for idx2=1:2
-        if(idx2==1) %nav colume
-            kspa{idx1,idx2} =  nav_nonb0_kspa_shifted(:,:,idx1);
-            kspa_1ch{idx1,idx2} =  nav_nonb0_kspa_shifted(:,1,idx1);
+% kspa = squeeze(cat(5, b0_kspa, nonb0_kpa));
+kspa = squeeze(cat(5, b0_kpa));
 
-        else %tse colume
-            kspa{idx1,idx2} =  nonb0_kpa(:,:,:,idx1);
-            kspa_1ch{idx1,idx2} =  nonb0_kpa(:,:,1,idx1);
-        end
-    end
-end
-kspa_b0{1,1} =  nav_b0_kspa_shifted;
-kspa_b0_1ch{1,1} =  nav_b0_kspa_shifted(:,1);
-kspa_b0{1,2} =  b0_kspa_full;
-kspa_b0_1ch{1,2} =  b0_kspa_full(:,:,1);
-
-kspa = cat(1, kspa_b0, kspa);
-kspa_1ch = cat(1, kspa_b0_1ch, kspa_1ch);
-
+kspa = repmat(kspa, [1 1 1 1 2]);
 
 %------LRT pars---------%
 pars.method='LRT'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 
-pars.LRT.Lg=8;
-pars.LRT.L3=4;
-pars.LRT.L4=2;
+pars.LRT.Lg=5;
+pars.LRT.L3=5;
+pars.LRT.L4=1;
 pars.LRT.mu = 2e4;
 pars.LRT.beta = 1;
 pars.LRT.lambda = 2e-3;
 
 pars.LRT.sparsity_transform='TV';
 %     pars.LRT.Imref=cat(3, repmat(squeeze(im_b0_ref(recon_x_loc,:,:,:)), [1 1 1 2]), repmat(squeeze(im_ref(recon_x_loc,:,:,:)), [1 1 length(recon_shot_range) 2]));
-pars.LRT.x=129;  %loc in dim2
-pars.LRT.y=238; %loc in dim1
+pars.LRT.x=30;  %loc in dim2
+pars.LRT.y=90; %loc in dim1
 pars.LRT.increase_penalty_parameters=false;
 pars.LRT.inspectLg=false;
 pars.LRT.subspacedim1=1;
@@ -276,7 +154,7 @@ pars.LRT.scaleksp=0;
 pars.LRT.niter = 5;
 
     
-image_corrected = msDWIrecon(kspa, squeeze(TSE_sense_map), [], pars);  %no phase error maps needed here
+image_corrected = msDWIrecon(kspa, squeeze(TSE_sense_map(x_loc,:,:,:)), [], pars);  %no phase error maps needed here
 
 figure(673); subplot(221); imshow((squeeze(abs(image_corrected(:,:,:,1,1)))),[]); title('b0 nav')
 subplot(222); imshow((squeeze(abs(image_corrected(:,:,:,1,2)))),[]); title('b0 TSE')
