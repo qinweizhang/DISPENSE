@@ -143,8 +143,11 @@ else
 end
 %4 zero-filled recon
 
+
+
 if(iscell(kspace))
     kspace_1 = LRT_cell_2_mat(kspace); %convert to same size and matrxi unfold
+ 
     unfoldedKsize = size(kspace_1); clear kspace;
     
     P1_0=F'*(kspace_1);

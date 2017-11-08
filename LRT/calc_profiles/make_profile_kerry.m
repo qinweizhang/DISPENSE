@@ -14,7 +14,7 @@ dim1_bigctr=1; % dimension number of fully sampled center (param dimension 1)
 dim2_bigctr=1; % dimension number of fully sampled center (param dimension 1)
 
 bigctrsize=0;
-smallctrsize=0;
+smallctrsize=5;
 DTI=1; %1=DTI/T2prep - 0: VFA/T2prep (decides ordering of lines) or VFA/DTI
 if(DTI)
 ETL = 60;
