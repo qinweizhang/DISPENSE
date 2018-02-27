@@ -124,85 +124,150 @@ if(recon_par.recon_all_shot)
 else
     end_shot_idx = 1;
 end
-for shot_nr = 1: end_shot_idx
-    shot_nr
-    
-    sig_kspa = double(nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr));
-    
-    %============xy offset compensation: based on trajectory======================================================
-    if(exist('Offcenter_xy','var'))
-        %---x offset
-        if(Offcenter_xy(1)~=0)
-            ima_offcenter_FOV_ratio = Offcenter_xy(1)/FOV_xy(1);
-            kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
-            kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
-            kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate; 
-            sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
-        end
-         %---y offset
-        if(Offcenter_xy(2)~=0)
-            ima_offcenter_FOV_ratio = Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
-            kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
-            kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
-            kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate; 
-            sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
 
-        end
-    end
-    %===========================================================================================================
-    
-    
-    if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
+if(recon_par.parfor)  %parfor recon
+    parfor shot_nr = 1: end_shot_idx
+        shot_nr
         
-        % ========Orthogonal data after SENSE maps orthogonal ============================================
-        if(exist('nav_sense_Psi','var'))
-            if(~isempty(nav_sense_Psi))
-
-                for c = 1:size(nav_sense_Psi,1)
-                    %recombine kspa 
-                    kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
-                end
-
-                sig_kspa = kspa_orthocoil;
-                clear  kspa_orthocoil
+        sig_kspa = double(nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr));
+        
+        %============xy offset compensation: based on trajectory======================================================
+        %if(exist('Offcenter_xy','var'))  %error in parfor
+            %---x offset
+            if(Offcenter_xy(1)~=0)
+                ima_offcenter_FOV_ratio = Offcenter_xy(1)/FOV_xy(1);
+                kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+                kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
+                kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
+                sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
             end
-        end
-        % =================================================================================================
+            %---y offset
+            if(Offcenter_xy(2)~=0)
+                ima_offcenter_FOV_ratio = Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
+                kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+                kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
+                kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
+                sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+                
+            end
+        %end
+        %===========================================================================================================
         
-        sig_nufft = col(double(sig_kspa));
         
-        A=nuFTOperator(trj_nufft,recon_par.recon_dim,double(nav_sense_map),6);
-        
-        % simple inverse
-        nav_im_recon_nufft_direct_inverse = A'*sig_nufft;
-        figure(702); montage(permute(abs(nav_im_recon_nufft_direct_inverse), [1 2 4 3]),'displayrange',[]); title('direct inverse');
-
-        
-        %call CG-SENSE with L2-norm regularization
-        nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,@L2Norm,recon_par.lamda,'maxit',recon_par.interations,'tol', 1e-10);
-        %                 nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
-        
-    else %ch by ch recon
-        
-        disp('recon ch by ch!')
-        
-        for ch =1:size(nav_k_spa_data,2)
-            sig_nufft = double(sig_kspa(:, ch));
-            sig_nufft = sig_nufft';
-            A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sense_map(:,:,:,ch),6);
+        if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
+            
+%             % ========Orthogonal data after SENSE maps orthogonal: disabled for parfor ============================================
+%             if(exist('nav_sense_Psi','var'))
+%                 if(~isempty(nav_sense_Psi))
+%                     
+%                     for c = 1:size(nav_sense_Psi,1)
+%                         %recombine kspa
+%                         kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
+%                     end
+%                     
+%                     sig_kspa = kspa_orthocoil;
+%                     clear  kspa_orthocoil
+%                 end
+%             end
+%             % =================================================================================================
+            
+            sig_nufft = col(double(sig_kspa));
+            
+            A=nuFTOperator(trj_nufft,recon_par.recon_dim,double(nav_sense_map),6);
             
             % simple inverse
-            %                 nav_im_recon_nufft(:,:,:,ch) = A'*sig_nufft';
-            
+            nav_im_recon_nufft_direct_inverse = A'*sig_nufft;
+            figure(702); montage(permute(abs(nav_im_recon_nufft_direct_inverse), [1 2 4 3]),'displayrange',[]); title('direct inverse');
             
             
             %call CG-SENSE with L2-norm regularization
-            nav_im_recon_nufft(:,:,:,ch,shot_nr)=regularizedReconstruction(A,sig_nufft',@L2Norm,recon_par.lamda,'maxit',recon_par.interations);
-            %             nav_im_recon_nufft(:,:,:,ch,shot_nr)=regularizedReconstruction(A,sig_nufft','maxit',recon_par.interations);
+            nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,@L2Norm,recon_par.lamda,'maxit',recon_par.interations,'tol', 1e-10);
+            %                 nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
+            
         end
-        % im_recon_nufft = flipdim(flipdim(im_recon_nufft,1),2);
+    end
+else %no parfor recon
+    for shot_nr = 1: end_shot_idx
+        shot_nr
+        
+        sig_kspa = double(nav_k_spa_data(selected_point,:,shot_nr,recon_par.dyn_nr));
+        
+        %============xy offset compensation: based on trajectory======================================================
+        if(exist('Offcenter_xy','var'))
+            %---x offset
+            if(Offcenter_xy(1)~=0)
+                ima_offcenter_FOV_ratio = Offcenter_xy(1)/FOV_xy(1);
+                kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+                kspa_trj_in_pixel = trj_nufft(:,1) / pi * (recon_par.recon_dim(1) * 0.5);   %convert trajectory unit from rad to pixel
+                kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
+                sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+            end
+            %---y offset
+            if(Offcenter_xy(2)~=0)
+                ima_offcenter_FOV_ratio = Offcenter_xy(2)/FOV_xy(1);                  %still use FOV_xy(1) as spiral FOV is always squared
+                kspa_linear_phase_rate = ima_offcenter_FOV_ratio * (2*pi);                  % in (rad/kspce pixel)
+                kspa_trj_in_pixel = trj_nufft(:,2) / pi * (recon_par.recon_dim(2) * 0.5);   %convert trajectory unit from rad to pixel
+                kspa_clibration_phase = kspa_trj_in_pixel * kspa_linear_phase_rate;
+                sig_kspa = bsxfun(@times, sig_kspa, exp(i*kspa_clibration_phase));          %add this calibration linear phase
+                
+            end
+        end
+        %===========================================================================================================
+        
+        
+        if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
+            
+            % ========Orthogonal data after SENSE maps orthogonal ============================================
+            if(exist('nav_sense_Psi','var'))
+                if(~isempty(nav_sense_Psi))
+                    
+                    for c = 1:size(nav_sense_Psi,1)
+                        %recombine kspa
+                        kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
+                    end
+                    
+                    sig_kspa = kspa_orthocoil;
+                    clear  kspa_orthocoil
+                end
+            end
+            % =================================================================================================
+            
+            sig_nufft = col(double(sig_kspa));
+            
+            A=nuFTOperator(trj_nufft,recon_par.recon_dim,double(nav_sense_map),6);
+            
+            % simple inverse
+            nav_im_recon_nufft_direct_inverse = A'*sig_nufft;
+            figure(702); montage(permute(abs(nav_im_recon_nufft_direct_inverse), [1 2 4 3]),'displayrange',[]); title('direct inverse');
+            
+            
+            %call CG-SENSE with L2-norm regularization
+            nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,@L2Norm,recon_par.lamda,'maxit',recon_par.interations,'tol', 1e-10);
+            %                 nav_im_recon_nufft(:,:,:,:,shot_nr)=regularizedReconstruction(A,sig_nufft,'maxit',recon_par.interations);
+            
+        else %ch by ch recon
+            
+            disp('recon ch by ch!')
+            
+            for ch =1:size(nav_k_spa_data,2)
+                sig_nufft = double(sig_kspa(:, ch));
+                sig_nufft = sig_nufft';
+                A=nuFTOperator(trj_nufft,recon_par.recon_dim,nav_sense_map(:,:,:,ch),6);
+                
+                % simple inverse
+                %                 nav_im_recon_nufft(:,:,:,ch) = A'*sig_nufft';
+                
+                
+                
+                %call CG-SENSE with L2-norm regularization
+                nav_im_recon_nufft(:,:,:,ch,shot_nr)=regularizedReconstruction(A,sig_nufft',@L2Norm,recon_par.lamda,'maxit',recon_par.interations);
+                %             nav_im_recon_nufft(:,:,:,ch,shot_nr)=regularizedReconstruction(A,sig_nufft','maxit',recon_par.interations);
+            end
+            % im_recon_nufft = flipdim(flipdim(im_recon_nufft,1),2);
+        end
     end
 end
+
 
 %% display
 display_shot_nr = 1;

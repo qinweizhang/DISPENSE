@@ -1,4 +1,4 @@
-function [nav_k_spa_data, varargout] = nav_kspa_data_read(fn, varargin)
+function [nav_k_spa_data, varargout] = spiral_kspa_data_read(fn, virtual_coil_nr)
 %
 %OUT
 %
@@ -7,21 +7,14 @@ function [nav_k_spa_data, varargout] = nav_kspa_data_read(fn, varargin)
 MR_TSEDPnav_data = MRecon(fn);
 
 MR_TSEDPnav_data.Parameter.Parameter2Read.typ = 1;
-MR_TSEDPnav_data.Parameter.Parameter2Read.mix = 1;  %for DPnav Spirals
-% MR_TSEDPnav_data.Parameter.Parameter2Read.mix = 0;  %for normal Spirals
-
+MR_TSEDPnav_data.Parameter.Parameter2Read.mix = 0;  %for DPnav Spirals
 
 MR_TSEDPnav_data.Parameter.Recon.ImmediateAveraging = 'No';
 ch_nr = length(MR_TSEDPnav_data.Parameter.Labels.CoilNrs);
 
-if(nargout == 2)
+if(virtual_coil_nr ~= 0)
     % ask for add coil compression
-    if(nargin == 2 )
-         virtual_coil_nr = varargin{1}; 
-         disp(['virtual coil nr set to ', num2str(virtual_coil_nr)] )
-    else
-        virtual_coil_nr = input(['Please input virtual coil nr for NAV DATA (0~',num2str(ch_nr),'; 0 for no coil comprsion):']);
-    end
+    virtual_coil_nr = input(['Please input virtual coil nr for NAV DATA (0~',num2str(ch_nr),'; 0 for no coil comprsion):']);
     
     if(virtual_coil_nr>0)
         MR_TSEDPnav_data.Parameter.Recon.ArrayCompression='Yes';
@@ -53,9 +46,8 @@ shots_per_volumn = profiles / ch_nr  / n_dyn;
 
 nav_k_spa_data = reshape(nav_k_spa_data,kx, ch_nr, shots_per_volumn, n_dyn); %for normal Spirals
 
-nav_k_spa_data = nav_k_spa_data(kx/2+1:end,:,:,:,:); %for DPnav when no pi jump happens
 
-[kx, n_ch, shots, diffusion_setting] = size(nav_k_spa_data);
+[kx, n_ch, shots, dynamics] = size(nav_k_spa_data);
 
 
 %% display relevant spiral parameters
@@ -64,19 +56,11 @@ disp('======================Kspace Size==========================')
 disp(['Kx length       : ', num2str(kx)]);
 disp(['Channels        : ', num2str(n_ch)]);
 disp(['Shots per volume: ', num2str(shots)]);
-disp(['Voumes          : ', num2str(diffusion_setting)]);
+disp(['Voumes          : ', num2str(dynamics)]);
 
 try
     disp('======================SPIRAL Pars.=========================')
-    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_xyRes');
-    disp(['DPnav_xyRes     : ', num2str(GOAL_value)]);
-    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_zRes');
-    disp(['DPnav_zRes      : ', num2str(GOAL_value)]);
-    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_Rxy');
-    disp(['DPnav_Rxy       : ', num2str(GOAL_value)]);
-    GOAL_value = MR_TSEDPnav_data.Parameter.GetValue('EX_T2PREP_DPnav_Rz');
-    disp(['DPnav_Rz        : ', num2str(GOAL_value)]);
-    GOAL_Par = MR_TSEDPnav_data.Parameter.GetObject('AQ`DPnav');
+    GOAL_Par = MR_TSEDPnav_data.Parameter.GetObject('AQ`base');
     disp(['AQ samples      : ', num2str(GOAL_Par.GetValue('samples'))]);
     disp(['AQ intervals    : ', num2str(GOAL_Par.GetValue('interval'))]);
     disp('====================Geom. Pars.============================')

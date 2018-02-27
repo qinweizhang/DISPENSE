@@ -37,7 +37,12 @@ ch_dim = length(MR_DPstiTSE.Parameter.Labels.CoilNrs);
 
 if(nargout == 12)
     % ask for add coil compression
-    virtual_coil_nr = input(['Please input virtual coil nr for TSE DATA (0~',num2str(ch_dim),'; 0 for no coil comprsion):']);
+    if(isfield(parameter2read, 'cc_nr'))
+        virtual_coil_nr = parameter2read.cc_nr;
+    else
+        virtual_coil_nr = input(['Please input virtual coil nr for TSE DATA (0~',num2str(ch_dim),'; 0 for no coil comprsion):']);
+    end
+    disp(['virtual coil nr = ', num2str(virtual_coil_nr)]);
     
     if(virtual_coil_nr>0)
         MR_DPstiTSE.Parameter.Recon.ArrayCompression='Yes';
@@ -155,7 +160,11 @@ MR_DPstiTSE.K2IP;
 MR_DPstiTSE.GridderNormalization;
 
 sense_recon = 0;
-sense_recon = input('SENSE unfold? ');
+if(isfield(parameter2read, 'sense_recon'))
+    sense_recon = parameter2read.sense_recon;
+else
+    sense_recon = input('SENSE unfold? ');
+end
 if(sense_recon)
     if(virtual_coil_nr==0) %only for no coil compression
         % --------------Calculate SENSE object-------------

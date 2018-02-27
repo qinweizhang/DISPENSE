@@ -1,4 +1,4 @@
-function image_filterd =  filt_perifiral_kspa(image_corrected_unfiltered, mask)
+function image_filterd =  filt_perifiral_kspa(image_corrected_unfiltered, mask, trim_kspa_filter_mask_size)
 %
 %INPUT
 %
@@ -9,8 +9,10 @@ function image_filterd =  filt_perifiral_kspa(image_corrected_unfiltered, mask)
 %
 
 
-[x_dim, y_dim]=size(image_corrected_unfiltered);
-assert(prod(size(mask)==size(image_corrected_unfiltered))==1,'mask should has the same size as image');
+[x_dim, y_dim,~]=size(image_corrected_unfiltered); %get first 2 dim
+% assert(prod(size(mask)==size(image_corrected_unfiltered))==1,'mask should has the same size as image');  %original
+assert(prod(size(mask)==[x_dim, y_dim])==1,'mask should has the same size as image'); 
+
 
 mask_all = 0 * mask;
 for x = 1:x_dim
@@ -28,8 +30,18 @@ for y = 1:y_dim
 end
 
 
+%trim mask
+mask_trim = trim_kspa_filter_mask_size; %possitive. Pixel numbers of the frame being discard.
+if(mask_trim>0)
+    mask_all = conv2(mask_all, ones(mask_trim,mask_trim)/(mask_trim.*mask_trim),'same');
+    mask_all(find(mask_all<0.99)) = 0;
+    mask_all(find(mask_all>0)) = 1;
+end
+
+
 %hard filter
 kspace_window = mask_all;
+
 
 %soft filter
 beta = 100; %small=smoother
@@ -60,5 +72,6 @@ subplot(122); imshow(kspace_window,[]);title('kspace filter'); colormap jet
 % mesh(X, Y, kspace_window)
 
 
-image_filterd = ifft2d(fft2d(image_corrected_unfiltered).*kspace_window);
+kspace_filterd = bsxfun(@times, fft2d(image_corrected_unfiltered), kspace_window);
+image_filterd = ifft2d(kspace_filterd);
 

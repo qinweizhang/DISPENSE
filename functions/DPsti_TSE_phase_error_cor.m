@@ -216,7 +216,7 @@ nav_im_1_diff(find(isnan(nav_im_1_diff)))=0; nav_im_1_diff(find(isinf(nav_im_1_d
 
 %set nav_im_1_diff phase to 0 for unreliable locations (optional and careful)
 % unreliable_location = find(abs(nav_im_1)<1e4);
-% nav_im_1_diff(unreliable_location)=abs(nav_im_1_diff(unreliable_location)); 
+% nav_im_1_diff(unreliable_location)=abs(nav_im_1_diff(unreliable_location));
 
 
 for sh = 1:size(nav_im_1_diff,4)
@@ -293,77 +293,103 @@ tic;
 if (TSE.Iz_dim>1)
     %% 3D recon
     recon_x = pars.recon_x_locs;
-%     recon_x = 200;
-    for x_idx = 1:length(recon_x)
-        
-        recon_x_loc = recon_x(x_idx);
-        
-        %=========select data. fixed=============================================
-        kspa = permute(kspa_x_yz(recon_x_loc, :, :, :, :),[2 3 4 5 1]);
-        sense_map = permute(sense_map_3D(recon_x_loc,:,:,:),[2 3 4 1]);
-        phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
-        %========================================================================
-        
-        % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
-        if(exist('sense_Psi', 'var'))
-            for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
-                sense_Psi(t,t) = real(sense_Psi(t,t));
-            end
-            L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-            L_inv = inv(L);
-            for c = 1:size(sense_Psi,1)
-                %recombine sense map
-                sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
-                %recombine kspa map
-                kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
-            end
-            figure(401);
-            subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
-            subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
+    %     recon_x = 200;
+    if(pars.parfor)
+        disp('ParFor enabled; Othorgnalize kspa & sense not possible');
+        parfor recon_x_loc = recon_x(1):recon_x(end)
             
-            sense_map =  sense_map_orthocoil;
-            kspa = kspa_orthocoil;
-            clear sense_map_orthocoil kspa_orthocoil
-            %renormalize sense
-            sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
+            disp(['current x location:',num2str(recon_x_loc),'...']);
+            %=========select data. fixed=============================================
+            kspa = permute(kspa_x_yz(recon_x_loc, :, :, :, :),[2 3 4 5 1]);
+            sense_map = permute(sense_map_3D(recon_x_loc,:,:,:),[2 3 4 1]);
+            phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
+            %========================================================================
+            
+            
+            
+            % display phase error------------------
+            figure(411);
+            montage(permute(squeeze(angle(phase_error)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet; title('phase error map');
+            %---------------------------------------
+            
+            
+            image_corrected_current= msDWIrecon(kspa, sense_map, phase_error, pars.msDWIrecon);
+            image_corrected_current(find(isnan(image_corrected_current))) = 0;
+            image_corrected(recon_x_loc,:,:)  = image_corrected_current;
+                     
         end
-        % ========================================================================================
-        
-        % display phase error------------------
-        figure(411);
-        montage(permute(squeeze(angle(phase_error)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet; title('phase error map');
-        %---------------------------------------
-        
-        
-        image_corrected(recon_x_loc,:,:) = msDWIrecon(kspa, sense_map, phase_error, pars.msDWIrecon);
-        
-        image_corrected(isnan(image_corrected)) = 0;
-        
-        %display
-        figure(101);
-        if(exist('im_b0'))
-            subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0');
+    else %no parfor
+        for x_idx = 1:length(recon_x)
+            
+            recon_x_loc = recon_x(x_idx);
+            
+            %=========select data. fixed=============================================
+            kspa = permute(kspa_x_yz(recon_x_loc, :, :, :, :),[2 3 4 5 1]);
+            sense_map = permute(sense_map_3D(recon_x_loc,:,:,:),[2 3 4 1]);
+            phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
+            %========================================================================
+            
+            % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+            if(exist('sense_Psi', 'var'))
+                for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
+                    sense_Psi(t,t) = real(sense_Psi(t,t));
+                end
+                L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+                L_inv = inv(L);
+                for c = 1:size(sense_Psi,1)
+                    %recombine sense map
+                    sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
+                    %recombine kspa map
+                    kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
+                end
+                figure(401);
+                subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
+                subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
+                
+                sense_map =  sense_map_orthocoil;
+                kspa = kspa_orthocoil;
+                clear sense_map_orthocoil kspa_orthocoil
+                %renormalize sense
+                sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
+            end
+            % ========================================================================================
+            
+            % display phase error------------------
+            figure(411);
+            montage(permute(squeeze(angle(phase_error)),[1 2 4 3]),'displayrange',[-pi pi]); colormap jet; title('phase error map');
+            %---------------------------------------
+            
+            
+            image_corrected(recon_x_loc,:,:) = msDWIrecon(kspa, sense_map, phase_error, pars.msDWIrecon);
+            
+            image_corrected(isnan(image_corrected)) = 0;
+            
+            %display
+            figure(101);
+            if(exist('im_b0'))
+                subplot(131);imshow(squeeze(abs(im_b0(recon_x_loc,:,:))),[]); title('b0');
+            end
+            subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
+            subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+            drawnow();
+            
+            %check nav image & TSE image consistance
+            figure(102);
+            subplot(231);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('reon');
+            subplot(232);imshow(squeeze(mean(abs(nav_im_2(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');
+            subplot(233);imshow(squeeze(mean(abs(nav_im_2_masked(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');
+            subplot(234);imshow(squeeze(angle(image_corrected(recon_x_loc,:,:))),[-pi pi]); title('angle recon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+            subplot(235);imshow(squeeze(angle(nav_im_2(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+            subplot(236);imshow(squeeze(angle(nav_im_2_masked(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
+            
+            drawnow();
+            
         end
-        subplot(132);imshow(squeeze(abs(im_nonb0(recon_x_loc,:,:))),[]); title('direct recon');
-        subplot(133);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('msDWIrecon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-        drawnow();
-
-        %check nav image & TSE image consistance
-        figure(102);
-        subplot(231);imshow(squeeze(abs(image_corrected(recon_x_loc,:,:))),[]); title('reon'); 
-        subplot(232);imshow(squeeze(mean(abs(nav_im_2(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');  
-        subplot(233);imshow(squeeze(mean(abs(nav_im_2_masked(recon_x_loc,:,:,:)),4)),[]); title('nav mean abs');  
-        subplot(234);imshow(squeeze(angle(image_corrected(recon_x_loc,:,:))),[-pi pi]); title('angle recon');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-        subplot(235);imshow(squeeze(angle(nav_im_2(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-        subplot(236);imshow(squeeze(angle(nav_im_2_masked(recon_x_loc,:,:,2))),[-pi pi]); title('nav angle');  xlabel(['x loc: ',num2str(recon_x_loc)]);
-
-        drawnow();
-        
     end
     
     
     %display
-    if(1) %big screen
+    if(0) %big screen
         figure(109);
         if(exist('im_b0','var'))
             subplot(141); montage(permute(abs(im_b0(80:250,:,:)),[1 2 4 3]),'displayrange',[]); title('b0');

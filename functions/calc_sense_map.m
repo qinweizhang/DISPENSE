@@ -1,9 +1,14 @@
 function [sense_map, varargout] = calc_sense_map(data_fn, sense_ref_fn, coil_survey_fn, recon_dim,methods, varargin)
 % calc sens_maps
-if(nargin == 6)
+if(nargin == 7)
     os = varargin{1};
+    other_pars = varargin{2};
+elseif(nargin == 6)
+    os = varargin{1};
+    other_pars = [];
 else
     os = [1 1];
+    other_pars = [];
 end
 
 %get k space
@@ -14,7 +19,7 @@ if(strcmp(methods, 'ecalib'))
     
 elseif (strcmp(methods, 'external'))
     
-    [sense_map, sense_Psi] = get_sense_map_external(sense_ref_fn, data_fn, coil_survey_fn, recon_dim, os);
+    [sense_map, sense_Psi] = get_sense_map_external(sense_ref_fn, data_fn, coil_survey_fn, recon_dim, os, other_pars);
 end
 
 %normalize sense maps

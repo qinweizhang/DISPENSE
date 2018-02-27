@@ -2,7 +2,6 @@
 
 function kspa_sortted = sort_k_spa_sh_by_sh_3(ima_k_spa_data, shot_range, TSE, pars)
 
-kx_dim = TSE.kx_dim;
 ky_dim = TSE.ky_dim;  %max_ky * 2 + 1;
 kz_dim = TSE.kz_dim;
 ch_dim = length(pars.enabled_ch); %TSE.ch_dim;

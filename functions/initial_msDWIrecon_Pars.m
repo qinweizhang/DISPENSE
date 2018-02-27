@@ -10,6 +10,7 @@ pars.recon_x_locs = []; %80:270;
 pars.enabled_ch = []; %1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
 pars.nonb0_shots = [];
+pars.trim_kspa_filter_mask_size = 0;
 
 pars.method='CG_SENSE_I';
 

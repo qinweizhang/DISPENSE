@@ -1,15 +1,19 @@
 function  [sens_map, varargout] = get_sense_map_external(sense_ref, data_fn, coil_survey, varargin)
 %% Input pars validation
-
-if(nargin == 4)
-    recon_dim = varargin{1};
-end
-if(nargin == 5)
+if(nargin == 6)
     recon_dim = varargin{1};
     os = varargin{2};
-else
+    other_pars = varargin{3};
+elseif(nargin == 5)
+    recon_dim = varargin{1};
+    os = varargin{2};
+    other_pars = [];
+elseif(nargin == 4)
+    recon_dim = varargin{1};
     os = [1 1 1];
+    other_pars = [];
 end
+
 %% Pre-sittings
 
 s = MRecon(sense_ref);
@@ -63,7 +67,11 @@ sens_Psi_default_sorting = MR_sense.Psi;
 
 %----------- ask for add coil compression---------------
 coil_compression = false;
-coil_compression = input('Any coil compression to be performed? [true/false]');
+if(isfield(other_pars, 'cc'))
+    coil_compression = other_pars.cc;
+else
+    coil_compression = input('Any coil compression to be performed? [true/false]');
+end
 
 %-------------------------end----------------------------
 if(~coil_compression) 
@@ -121,7 +129,7 @@ end
 %% display
 
 
-display_bool = input('display sense map? (true/false): ');
+%display_bool = input('display sense map? (true/false): ');
 display_bool = 0;
 if(display_bool)
     figure(711);
