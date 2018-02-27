@@ -1,9 +1,9 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_27_SND_brain')
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_11_08/')
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_for_Sc8.mat';
+trj_save_fn = 'traj_for_Sc2.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_27102017_1725555_8_2_wip_sc3_3d_snd_brain_4b_lrtV4.raw';
-sense_ref_fn = 'sn_27102017_1721547_1000_13_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sn_27102017_1716418_1000_10_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_08112017_1728454_2_2_wip_sc2_3d_snd_carotidV4.raw';
+sense_ref_fn = 'sn_08112017_1725284_1000_5_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_08112017_1724330_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc8_9.mat';
+trj_mat_fn = 'traj_for_Sc2.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -23,18 +23,14 @@ disp('spiral Nav. data loading...')
 % nav_k_spa_data = nav_kspa_data_read(data_fn);
 
 disp('-finished- ');
-
-
-
-
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
-save_mat_fn = 'Sc08.mat';
+save_mat_fn = 'Sc02.mat';
 close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 offcenter_xy = [0 0]; 
-FOV_xy = [250 164.7727];
+FOV_xy = [170 170];
 % nav_im_recon_nufft = [];
 dyn_recon = 1:dyn_nr;
 for d = 1:length(dyn_recon)
@@ -43,13 +39,13 @@ for d = 1:length(dyn_recon)
     disp(['dynamic: ',num2str(dyn)]);
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [42 42 13];  
-    recon_par.recon_dim  = [42 42 13];
+    recon_par.acq_dim = [42 42 9];  
+    recon_par.recon_dim  = [42 42 9];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = []; %or []: till the end;
     recon_par.interations = 10;
-    recon_par.lamda = 0;
+    recon_par.lamda = 0.5;
     recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
@@ -133,35 +129,8 @@ TSE
 assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not match with data size!')
 disp('-finished- ');
 
-
-%% SET parameter
-save_mat_fn = 'Sc08.mat';
-
-%% Calc SENSE map
-
-TSE.SENSE_kx =1;
-TSE.SENSE_ky =1;
-TSE.SENSE_kz =1;
-
-TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
-TSE.kyrange = [-108 -1]; 
-TSE.kzrange = [-66  -1];
-
-TSE.Ixrange = [ceil(TSE.kxrange(1).*TSE.SENSE_kx) -1];
-TSE.Iyrange = [ceil(TSE.kyrange(1).*TSE.SENSE_ky) -1];
-TSE.Izrange = [ceil(TSE.kzrange(1).*TSE.SENSE_kz) -1];
-TSE.kyrange = TSE.Iyrange;
-TSE.kzrange = TSE.Izrange;
-
-TSE.dyn_dim = dyn_nr;
-
-pars.sense_map = 'external';  % external or ecalib 
-pars.data_fn = data_fn;
-pars.sense_ref = sense_ref_fn;
-pars.coil_survey = coil_survey_fn;
-
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
-save_mat_fn = 'Sc03.mat';
+save_mat_fn = 'Sc02.mat';
 
 nav_data = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
 
@@ -170,7 +139,7 @@ TSE.SENSE_ky =2;
 TSE.SENSE_kz =1;
 
 % TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
-TSE.kxrange = [-512 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
+TSE.kxrange = [-384 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 
 
 TSE.Ixrange = [ceil(TSE.kxrange(1).*TSE.SENSE_kx) -1];
@@ -189,7 +158,8 @@ pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-pars.recon_x_locs = 120:400; %80:270;
+pars.recon_x_locs = 1:384; %80:270;
+pars.recon_dyn = [2 1 3];
 pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
 
@@ -230,11 +200,12 @@ clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sort
 
 
 
-pars.large_scale_recon = true; % Choose to use DPsti_TSE_phase_error_cor_large_scale.m or DPsti_TSE_phase_error_cor.m
+pars.large_scale_recon = 1; %true; % Choose to use DPsti_TSE_phase_error_cor_large_scale.m or DPsti_TSE_phase_error_cor.m
 shot_per_dyn = max(TSE.shot_matched) / TSE.dyn_dim;
-for d = 1:dyn_nr
+
+for dx = 1:length(pars.recon_dyn)
     tic
-    d
+    d = pars.recon_dyn(dx)
     
     pars.nonb0_shots = [1:shot_per_dyn] + (d-1)*shot_per_dyn;
     

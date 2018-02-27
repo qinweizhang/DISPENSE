@@ -87,13 +87,13 @@ tse_sense_map_paded = bart(rs_command, tse_sense_map_unpaded);
 
 TSE.sense_mask = abs(tse_sense_map_paded(:,:,:,1 ))>0;
 TSE_sense_map = tse_sense_map_paded; %[]; %calc again using get_sense_map_external
-figure(3); montage(permute(squeeze(abs(TSE_sense_map(200,:,:,:))),[1 2 4 3]),'displayrange',[]); xlabel('SENSE maps')
+figure(3); montage(permute(squeeze(abs(TSE_sense_map(250,:,:,:))),[1 2 4 3]),'displayrange',[]); xlabel('SENSE maps')
 %-------------------end---------------%
 
 %% Get b0 data
 
 %=======TSE imaging=======%
-x_loc = 200;
+x_loc = 250;
 hybrid_k_spa_data = zeros(TSE.kx_dim, size(ima_k_spa_data,2));
 pad_left = floor((TSE.kx_dim - size(ima_k_spa_data,1))/2);
 hybrid_k_spa_data(pad_left+1:pad_left+size(ima_k_spa_data,1),:) = ifft1d(ima_k_spa_data);

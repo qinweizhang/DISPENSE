@@ -1,9 +1,9 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_27_SND_brain')
+cd('/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2018_01_16_SND_brain')
 %% trajectory calculation
 close all; clear; clc;
-trj_save_fn = 'traj_for_Sc8.mat';
+trj_save_fn = 'traj_for_Sc6_8.mat';
 trajectory_measure_distance = 15; %in mm
 spira_3D_trjectory_calculation(trj_save_fn, trajectory_measure_distance);
 disp('-finished- ');
@@ -11,11 +11,11 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn = 'sn_27102017_1725555_8_2_wip_sc3_3d_snd_brain_4b_lrtV4.raw';
-sense_ref_fn = 'sn_27102017_1721547_1000_13_wip_senserefscanV4.raw';
-coil_survey_fn  = 'sn_27102017_1716418_1000_10_wip_coilsurveyscanV4.raw';
+data_fn = 'sn_16012018_1928329_8_2_wip_sc4_3d_snd_brain_4bV4.raw';
+sense_ref_fn = 'sn_16012018_1846492_1000_5_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_16012018_1841319_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc8_9.mat';
+trj_mat_fn = 'traj_for_Sc6_8.mat';
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
@@ -23,10 +23,6 @@ disp('spiral Nav. data loading...')
 % nav_k_spa_data = nav_kspa_data_read(data_fn);
 
 disp('-finished- ');
-
-
-
-
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
 save_mat_fn = 'Sc08.mat';
@@ -34,9 +30,9 @@ close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 offcenter_xy = [0 0]; 
-FOV_xy = [250 164.7727];
+FOV_xy = [250 179.6875];
 % nav_im_recon_nufft = [];
-dyn_recon = 1:dyn_nr;
+dyn_recon = 9:-1:1;
 for d = 1:length(dyn_recon)
     tic
     dyn  = dyn_recon(d);
@@ -88,12 +84,8 @@ for d = 1:length(dyn_recon)
     end
     nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
     nav_im_recon_nufft(:,:,:,:,:,dyn) = nav_im_recon_nufft_1dyn;
-    save(save_mat_fn, 'nav_im_recon_nufft','-append'); 
-    
-    
-    elaps_t=toc;
-    msg = sprintf(['SoSNav recon finishted for {', data_fn,'} ; ...dynamic %d ; duration %f; s', 10, 'Saved as ', save_mat_fn],d, elaps_t);
-    sendmail_from_yahoo('q.zhang@amc.nl','Matlab Message',msg);
+    save(save_mat_fn, 'nav_im_recon_nufft'); 
+    toc
 end
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
@@ -133,45 +125,18 @@ TSE
 assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not match with data size!')
 disp('-finished- ');
 
-
-%% SET parameter
-save_mat_fn = 'Sc08.mat';
-
-%% Calc SENSE map
-
-TSE.SENSE_kx =1;
-TSE.SENSE_ky =1;
-TSE.SENSE_kz =1;
-
-TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
-TSE.kyrange = [-108 -1]; 
-TSE.kzrange = [-66  -1];
-
-TSE.Ixrange = [ceil(TSE.kxrange(1).*TSE.SENSE_kx) -1];
-TSE.Iyrange = [ceil(TSE.kyrange(1).*TSE.SENSE_ky) -1];
-TSE.Izrange = [ceil(TSE.kzrange(1).*TSE.SENSE_kz) -1];
-TSE.kyrange = TSE.Iyrange;
-TSE.kzrange = TSE.Izrange;
-
-TSE.dyn_dim = dyn_nr;
-
-pars.sense_map = 'external';  % external or ecalib 
-pars.data_fn = data_fn;
-pars.sense_ref = sense_ref_fn;
-pars.coil_survey = coil_survey_fn;
-
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
-save_mat_fn = 'Sc03.mat';
+save_mat_fn = 'Sc08.mat';
 
 nav_data = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
 
+TSE.dyn_dim = dyn_nr;
 TSE.SENSE_kx =1;
-TSE.SENSE_ky =2;
-TSE.SENSE_kz =1;
+TSE.SENSE_ky =3;
+TSE.SENSE_kz =2;
 
-% TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
+TSE.kyrange = [-62 -1]; 
 TSE.kxrange = [-512 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
-
 
 TSE.Ixrange = [ceil(TSE.kxrange(1).*TSE.SENSE_kx) -1];
 TSE.Iyrange = [ceil(TSE.kyrange(1).*TSE.SENSE_ky) -1];
@@ -179,19 +144,20 @@ TSE.Izrange = [ceil(TSE.kzrange(1).*TSE.SENSE_kz) -1];
 TSE.kyrange = TSE.Iyrange;
 TSE.kzrange = TSE.Izrange;
 
-TSE.dyn_dim = dyn_nr;
 
 
 %parameters for DPsti_TSE_phase_error_cor
-
 pars.sense_map = 'external';  % external or ecalib 
+
 pars.data_fn = data_fn;
 pars.sense_ref = sense_ref_fn;
 pars.coil_survey = coil_survey_fn;
 pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
-pars.recon_x_locs = 120:400; %80:270;
+pars.recon_x_locs = 129:129+256;
 pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
+pars.recon_dyn = 9:-1:1;
+
 
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
@@ -229,12 +195,12 @@ clear sense_map_temp;
 clear mr nav_im_recon_nufft nav_im_recon_nufft_1dyn nav_k_spa_data ima_kspa_sorted ima_default_recon
 
 
-
-pars.large_scale_recon = true; % Choose to use DPsti_TSE_phase_error_cor_large_scale.m or DPsti_TSE_phase_error_cor.m
+pars.large_scale_recon = 1; %true; % Choose to use DPsti_TSE_phase_error_cor_large_scale.m or DPsti_TSE_phase_error_cor.m
 shot_per_dyn = max(TSE.shot_matched) / TSE.dyn_dim;
-for d = 1:dyn_nr
+
+for dx = 5:length(pars.recon_dyn)
     tic
-    d
+    d = pars.recon_dyn(dx)
     
     pars.nonb0_shots = [1:shot_per_dyn] + (d-1)*shot_per_dyn;
     
@@ -249,8 +215,41 @@ for d = 1:dyn_nr
      
      
      elaps_t=toc;
-     msg = sprintf(['Recon finishted for {', data_fn,'} ; dynamic %d ; duration %f; s', 10, 'Saved as ', save_mat_fn],d, elaps_t); 
-     sendmail_from_yahoo('q.zhang@amc.nl','Matlab Message',msg);
+%      msg = sprintf(['Recon finishted for {', data_fn,'} ; dynamic %d ; duration %f; s', 10, 'Saved as ', save_mat_fn],d, elaps_t); 
+%      sendmail_from_yahoo('q.zhang@amc.nl','Matlab Message',msg);
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
+
+%% DTI data processing. ADC, FA map
+b = 800;
+
+
+g_all = [0.000,  0.000, -0.668,  0.000,  0.668,  0.668, -0.668,  0.621, -0.621;...
+         0.000,  0.707, -0.293, -0.707, -0.293, -0.684, -0.684,  0.554,  0.554;...
+         0.000,  0.707,  0.684,  0.707,  0.684,  0.293,  0.293,  0.554,  0.554];
+g_all = g_all';
+
+clear MD FA eigvec
+
+selected_volume = 1:9;
+slice = 20;
+DTI_data = abs(image_corrected(:,:,slice,selected_volume));
+g = g_all(selected_volume,:);
+
+[MD, FA, eigvec] = DTI_fitting(DTI_data, g, b);
+
+
+mask = DTI_data(:,:,:,1)>10;
+MD = bsxfun(@times,MD, mask );
+FA = bsxfun(@times,FA, mask );
+eigvec = bsxfun(@times,eigvec, mask );
+
+figure(63); 
+imshow(MD,[0 0.003]); colormap jet; colorbar; title('MD');
+figure(64); 
+imshow(FA,[0.2 1]);  colorbar; title('FA'); colormap hot;
+
+eigvec = permute(eigvec,[1 2 3 5 4]);
+figure(65);montage(permute(squeeze(eigvec(:,:,1,:,:)),[1 2 3 4]));  colorbar; title('eigenvector #1');
+
 

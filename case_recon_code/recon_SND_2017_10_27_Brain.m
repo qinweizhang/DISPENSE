@@ -17,6 +17,20 @@ coil_survey_fn  = 'sn_27102017_1638050_1000_2_wip_coilsurveyscanV4.raw';
 
 trj_mat_fn = 'traj_for_Sc2_3.mat';
 
+
+%% B0 mapping data loading
+
+disp(' Loading B0 mapping data...');
+
+dicom_path = '/home/qzhang/lood_storage/divi/Ima/parrec/Kerry/Data/2017_10_27_SND_brain/00501_B0_map';
+b0_mapping_data = load_b0_mapping_dicom(dicom_path);
+b0_maps = b0_mapping_data(:,:,:,2).*(b0_mapping_data(:,:,:,1)>1e6);
+
+
+figure(19); montage(permute(squeeze(abs(b0_maps)),[1 2 4 3]),'displayrange',[]); colormap jet; colorbar
+disp(' Finished');
+
+
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
 [nav_k_spa_data, Nav_VirtualCoilMartix] = nav_kspa_data_read(data_fn);
@@ -25,19 +39,21 @@ disp('spiral Nav. data loading...')
 disp('-finished- ');
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
-save_mat_fn = 'Sc03.mat';
+save_mat_fn = 'Sc03_testing.mat';
 close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 offcenter_xy = [0 0]; 
 FOV_xy = [250 167.9688];
 % nav_im_recon_nufft = [];
-dyn_recon = 1:dyn_nr;
+dyn_recon = 1:1;
 for d = 1:length(dyn_recon)
     tic
+    %% parameter setting
     dyn  = dyn_recon(d);
     disp(['dynamic: ',num2str(dyn)]);
     %=============== recon parameters =========================
+    recon_par = initial_spiral_recon_par;
     recon_par.ignore_kz = 0;
     recon_par.acq_dim = [42 42 26];  
     recon_par.recon_dim  = [42 42 26];
@@ -47,7 +63,7 @@ for d = 1:length(dyn_recon)
     recon_par.selected_point = [];  %overrule skip_point and end_point
     recon_par.interations = 10;
     recon_par.lamda = 0;
-    recon_par.recon_all_shot = 1;
+    recon_par.recon_all_shot = 0;
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
     recon_par.sense_calc_method = 'external'; %'ecalib' or 'external'
@@ -56,6 +72,11 @@ for d = 1:length(dyn_recon)
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
     
+    recon_par.time_segmented_recon_for_B0_inhomo = 1; %time segmented recon to compensate B0 inhomongneity; !!!time consuming!!!  
+    recon_par.time_segments.nr_segments = 20; %more time segments more acurate; but recon times increases by a factor of time_segments
+    recon_par.time_segments.aq_interval = 0.00576;  %AQ time interval in ms
+    
+    
     recon_par.channel_by_channel = 1;
     recon_par.channel_by_channel = recon_par.channel_by_channel .* (1-recon_par.sense_map_recon );
     %========================  END  =========================
@@ -63,6 +84,7 @@ for d = 1:length(dyn_recon)
         recon_par.update_SENSE_map = 1;
      end
     
+     %% sense map
     if(recon_par.update_SENSE_map)
         [nav_sense_map, nav_sense_Psi] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method, recon_par.sense_os);
         %compress sense map and sense_Psi
@@ -83,7 +105,15 @@ for d = 1:length(dyn_recon)
     if(~exist('nav_sense_Psi','var'))
         nav_sense_Psi = [];
     end
-    nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
+    
+    %% recon
+    if(recon_par.time_segmented_recon_for_B0_inhomo)
+        nav_im_recon_nufft_1dyn = NUFFT_3D_recon_time_segments(nav_k_spa_data,trj_mat_fn,recon_par, b0_maps, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
+    else
+        nav_im_recon_nufft_1dyn = NUFFT_3D_recon(nav_k_spa_data,trj_mat_fn,recon_par, nav_sense_map, nav_sense_Psi,offcenter_xy, FOV_xy);
+    end
+    
+    %% save 
     nav_im_recon_nufft(:,:,:,:,:,dyn) = nav_im_recon_nufft_1dyn;
     save(save_mat_fn, 'nav_im_recon_nufft','-append'); 
     
@@ -92,6 +122,9 @@ for d = 1:length(dyn_recon)
     msg = sprintf(['SoSNav recon finishted for {', data_fn,'} ; ...dynamic %d ; duration %f; s', 10, 'Saved as ', save_mat_fn],d, elaps_t);
     sendmail_from_yahoo('q.zhang@amc.nl','Matlab Message',msg);
 end
+
+% -----display------------
+
 % nav_sense_map = circshift(nav_sense_map, round(17.26/115.00*size(nav_sense_map,1)));
 % nav_im_recon_nufft = circshift(nav_im_recon_nufft, -1*round(17.26/115.00*size(nav_sense_map,1)));
 dyn = 2;
@@ -223,37 +256,4 @@ for d = 1:dyn_nr
      sendmail_from_yahoo('q.zhang@amc.nl','Matlab Message',msg);
 end
 % TODO make DPsti_TSE_phase_error_cor for POCS_ICE option
-
-%% DTI data processing. ADC, FA map
-b = 800;
-
-
-g_all = [0.000,  0.000, -0.668,  0.000,  0.668,  0.668, -0.668,  0.621, -0.621;...
-         0.000,  0.707, -0.293, -0.707, -0.293, -0.684, -0.684,  0.554,  0.554;...
-         0.000,  0.707,  0.684,  0.707,  0.684,  0.293,  0.293,  0.554,  0.554];
-g_all = g_all';
-
-clear MD FA eigvec
-
-selected_volume = 1:9;
-slice = 20;
-DTI_data = abs(image_corrected(:,:,slice,selected_volume));
-g = g_all(selected_volume,:);
-
-[MD, FA, eigvec] = DTI_fitting(DTI_data, g, b);
-
-
-mask = DTI_data(:,:,:,1)>10;
-MD = bsxfun(@times,MD, mask );
-FA = bsxfun(@times,FA, mask );
-eigvec = bsxfun(@times,eigvec, mask );
-
-figure(63); 
-imshow(MD,[0 0.003]); colormap jet; colorbar; title('MD');
-figure(64); 
-imshow(FA,[0.2 1]);  colorbar; title('FA'); colormap hot;
-
-eigvec = permute(eigvec,[1 2 3 5 4]);
-figure(65);montage(permute(squeeze(eigvec(:,:,1,:,:)),[1 2 3 4]));  colorbar; title('eigenvector #1');
-
 
