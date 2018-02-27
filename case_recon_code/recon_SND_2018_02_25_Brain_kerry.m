@@ -119,7 +119,7 @@ close all; clc; clear TSE
 disp(' TSE data sorting and default recon...')
 
 parameter2read.dyn = [];
-parameter2read.cc_nr = 0; %0 for no cc
+parameter2read.cc_nr = 4; %0 for no cc
 parameter2read.sense_recon = 0;
 
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange, TSE.VirtualCoilMartix] = ...
@@ -173,8 +173,8 @@ pars.nocorrection = 0;
 pars.msDWIrecon = initial_msDWIrecon_Pars;
 pars.msDWIrecon.trim_kspa_filter_mask_size = 7;
 pars.msDWIrecon.CG_SENSE_I.lamda=1e-2;
-pars.msDWIrecon.CG_SENSE_I.nit=15;
-pars.msDWIrecon.CG_SENSE_I.tol = 1e-10;
+pars.msDWIrecon.CG_SENSE_I.nit=50; %15;
+pars.msDWIrecon.CG_SENSE_I.tol = 1e-20; %1e-10;
 pars.msDWIrecon.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
 pars.msDWIrecon.POCS.nit = 50;
 pars.msDWIrecon.POCS.tol = 1e-10;
@@ -187,7 +187,7 @@ pars.msDWIrecon.method='CG_SENSE_I'; %POCS_ICE CG_SENSE_I CG_SENSE_K LRT
 os = [1, 1, 1];
 dim = [range(TSE.Ixrange), range(TSE.Iyrange), range(TSE.Izrange) ]+1;
 
-clc_sens_par.cc = 0;
+clc_sens_par.cc = 1;
 clc_sens_par.disp = 0;
 [sense_map_temp, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [dim(1)/2 dim(2) dim(3)], os, clc_sens_par);
 %----compress sense map and sense_Psi
