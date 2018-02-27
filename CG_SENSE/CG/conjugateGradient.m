@@ -69,6 +69,8 @@ for n=1:maxit
         if gcf~=h
             set(0,'CurrentFigure',h);
         end
+        
+        subplot(121); %kerry
         if isnumeric(z) && isvector(z)
             plot(abs(z));
         elseif isnumeric(z) && is2Darray(z)
@@ -85,18 +87,18 @@ for n=1:maxit
         title(['Iteration #', num2str(n),': current tolerance = ', num2str(sqrt(normrr/normrr0)), '.']);
         drawnow;
         
-         figure(2000);
+        subplot(122); %kerry
         if isnumeric(z) && isvector(z)
             plot(angle(z));
         elseif isnumeric(z) && is2Darray(z)
             imagesc(angle(z),[-pi pi]);
-            colormap jet;
+%             colormap jet;
         elseif isnumeric(z) && length(size(z))==3
             imagesc(angle(array2mosaic(z)),[-pi pi]);
-            colormap jet;
+%             colormap jet;
         else
             imagesc(z,[-pi pi]);
-            colormap jet;
+%             colormap jet;
         end
         axis off;
         title(['Iteration #', num2str(n),': current tolerance = ', num2str(sqrt(normrr/normrr0)), '.']);
