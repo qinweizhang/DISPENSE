@@ -38,6 +38,10 @@ else %normal case; kspace is a 5-D array
     unfoldedIsize=[size(kspace,1)*size(kspace,2),size(kspace,4)*size(kspace,5)];                %coil combined
     unfoldedKsize=[size(kspace,1)*size(kspace,2)*size(kspace,3),size(kspace,4)*size(kspace,5)];     %coils separate
 end
+
+
+
+
 %%
 % >>>>>>>>>>>>>>>>>>>>RECON FROM HERE<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -74,6 +78,7 @@ if(iscell(kspace))
     %=============================end=============================================%
 else %normal
     mask=squeeze(kspace(:,:,1,:,:))~=0;
+    filter_mask = sum(sum(mask,3),4)>0;
 end
 
 if isempty(params.nav_estimate_1)                  % subspace estimation 
