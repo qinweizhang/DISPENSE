@@ -11,8 +11,9 @@ g_y = 1/gamma * cat(2, 0, diff(imag(k))./gr_dwell);
 g_x = 1/gamma * cat(2, 0, diff(real(k))./gr_dwell);
 
 fix_gr_end_str = false;
-fix_gr_end_angle = ~fix_gr_end_str;
-assert(xor(fix_gr_end_str, fix_gr_end_angle));
+fix_gr_end_angle = true;
+brutal = false;
+assert(sum([fix_gr_end_str fix_gr_end_angle brutal])==1);
 
 if(fix_gr_end_str)
     %% control the strength of the end gradient to (0)
@@ -49,7 +50,7 @@ if(fix_gr_end_str)
     phi_end = angle(k_optimized(end));
     k_optimized =  k_optimized .* exp(-i.*phi_end); %always ends at 0 degree
     disp(['Smoothing tailor length: ', num2str(length(g_y_tail))]);
-else(fix_gr_end_angle)
+elseif(fix_gr_end_angle)
     %% control the phase of the end gradient to be perpendicular to k(end): g(end)*k(end)' = 0
     
     g_end_mtx = [g_x(end); g_y(end)];
@@ -67,17 +68,17 @@ else(fix_gr_end_angle)
     finish = false;  step = 1;
     clear g_tailor_mtx k_tailor_mtx
     while(~finish)
-        %=========visulize===================
-%         figure(11);
-%         
-%         quiver(0,0,k_end_current_mtx(1),k_end_current_mtx(2),'r')
-%         hold on
-%         quiver(k_end_current_mtx(1),k_end_current_mtx(2),g_end_current_mtx(1),g_end_current_mtx(2))
-%         
-%         xlim([-2 2])
-%         ylim([-2 2])
-%         hold off
-%         drawnow(); pause(0.5);
+        %=========visulize===================z
+        %         figure(11);
+        %
+        %         quiver(0,0,k_end_current_mtx(1),k_end_current_mtx(2),'r')
+        %         hold on
+        %         quiver(k_end_current_mtx(1),k_end_current_mtx(2),g_end_current_mtx(1),g_end_current_mtx(2))
+        %
+        %         xlim([-2 2])
+        %         ylim([-2 2])
+        %         hold off
+        %         drawnow(); pause(0.5);
         %====================================
         
         g_tailor_mtx(:, step) = g_end_current_mtx + gr_proj_str_step.*[cos(angle(k_cpx)); sin(angle(k_cpx))];
@@ -89,7 +90,7 @@ else(fix_gr_end_angle)
         
         g_proj_current = (k_end_current_mtx * k_end_current_mtx')/(k_end_current_mtx'*k_end_current_mtx)*g_end_current_mtx;
         g_proj_current_mag = sqrt(g_proj_current'*g_proj_current);
-%         disp(['step: ',num2str(step),'; gr projected along k(end): ', num2str(g_proj_current_mag)]);
+        %         disp(['step: ',num2str(step),'; gr projected along k(end): ', num2str(g_proj_current_mag)]);
         
         if(g_end_current_mtx'*k_end_current_mtx/abs(k_cpx)<gr_proj_str_step/2)
             finish = true;
@@ -101,16 +102,67 @@ else(fix_gr_end_angle)
     g_tailor_mtx(:, step) = g_tailor_mtx(:, step) - g_proj_current;
     disp(['Smoothing tailor length: ', num2str(step)]);
     
-%     figure(12);
-%     subplot(131); plot(k_tailor_mtx(1,:),k_tailor_mtx(2,:)); title('trajecotry'); xlim([-1 1]); ylim([-1 1])
-%     subplot(132); plot(g_tailor_mtx(1,:)); hold on; plot(g_tailor_mtx(2,:),'r'); title('gradients');
-%     subplot(133); plot(abs(diff(g_tailor_mtx(1,:))./gr_dwell + 1i*diff(g_tailor_mtx(2,:))./gr_dwell)); title('SL')
+    %     figure(12);
+    %     subplot(131); plot(k_tailor_mtx(1,:),k_tailor_mtx(2,:)); title('trajecotry'); xlim([-1 1]); ylim([-1 1])
+    %     subplot(132); plot(g_tailor_mtx(1,:)); hold on; plot(g_tailor_mtx(2,:),'r'); title('gradients');
+    %     subplot(133); plot(abs(diff(g_tailor_mtx(1,:))./gr_dwell + 1i*diff(g_tailor_mtx(2,:))./gr_dwell)); title('SL')
     
     k_tailor = k_tailor_mtx(1,:) + 1i*k_tailor_mtx(2,:);
     k_optimized = [k k_tailor];
     
     phi_end = angle(k_optimized(end));
     k_optimized =  k_optimized .* exp(-i.*phi_end); %always ends at 0 degree
+    
+elseif(brutal)
+    %%
+    %initial
+    phi_end = angle(k(end));
+    k =  k .* exp(-i.*phi_end); %always ends at 0 degree
+    g_y = 1/gamma * cat(2, 0, diff(imag(k))./gr_dwell);
+    g_x = 1/gamma * cat(2, 0, diff(real(k))./gr_dwell);
+    
+    g_end_mtx = [g_x(end); g_y(end)];
+    k_end_mtx = [real(k(end)); imag(k(end))];
+    
+    %max step
+    blip_gr_sr_max = 9000; %G/cm/s  90 mT/m/ms
+    blip_gr_sr_actual = -blip_gr_sr_max;
+    gr_proj_str_step = blip_gr_sr_actual * gr_dwell;
+    
+    finish = false; step = 0;
+    while(~finish)
+        
+        if(g_x(end)+gr_proj_str_step<0)
+%             gr_proj_str_step = -g_x(end);
+            finish = true;
+        end
+        
+        g_end_mtx = [g_x(end)+gr_proj_str_step; g_y(end)];
+        
+        
+        k_tailor_mtx = k_end_mtx + g_end_mtx.*gamma.* gr_dwell;
+        k_tailor = k_tailor_mtx(1,:) + 1i*k_tailor_mtx(2,:);
+        k = [k k_tailor];
+        
+        %update k
+        phi_end = angle(k(end));
+        k =  k .* exp(-i.*phi_end); %always ends at 0 degree
+        k_end_mtx = [real(k(end)); imag(k(end))];
+        figure(18); plot(k); drawnow;
+        
+        %update GR
+        g_y = 1/gamma * cat(2, 0, diff(imag(k))./gr_dwell);
+        g_x = 1/gamma * cat(2, 0, diff(real(k))./gr_dwell);
+        [g_x(end); g_y(end)]
+        step = step + 1;
+        if(finish)
+            disp(['steps = ', num2str(step)]);
+        end
+        
+    end
+    
+    k_optimized = k;
+    
     
 end
 
