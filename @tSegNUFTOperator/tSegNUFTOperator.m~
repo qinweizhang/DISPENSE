@@ -1,0 +1,37 @@
+function  A = tSegNUFTOperator(b0_maps, time_segments_par, samples_idx, nuFTop)
+
+% usage:
+% A = tSegNUFTOperator(b0_maps_resized, nuFTop)
+%
+% b0_maps_resized:  in size of[x y z]     B0 offresonance map
+% time_segments_par:   parameter structure
+% samples_idx:        selected recon time point index
+% nuFTop:           a defualt nuFFT operator defined by nuFTOperator.m
+%
+% IMPLEMENTATION of "Fast, Iterative Imaging Reconstruction for MRI in the Presence of Field Inhomogeneities" Bradley Sutton et al. 
+%
+% (C) q.zhang Amsterdam, 2017
+
+
+if nargin==0 % default constructor
+    
+    s.b0_maps = [];
+    s.tSeg = [];
+    s.samples_idx = [];
+    s.interpolator = [];
+    s.nuFTop = [];
+  
+else
+    
+    s.b0_maps = b0_maps;
+    s.tSeg = time_segments_par;
+    s.samples_idx = samples_idx;
+    s.nuFTop = nuFTop;
+    
+    s.interpolator = tSeg_nuuft_interpolator_init(s.tSeg, s.samples_idx, b0_maps);
+    
+    
+    disp('');
+end
+
+A = class(s,'tSegNUFTOperator');
