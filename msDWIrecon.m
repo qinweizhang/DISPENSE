@@ -75,7 +75,7 @@ if strcmp(pars.method, 'CG_SENSE_I')
         tol =   pars.CG_SENSE_I.tol;
         
         image_corrected_unfiltered=regularizedReconstruction(A,b,@L2Norm,lamda,'maxit',maxit,'tol', tol);
-        image_corrected = filt_perifiral_kspa(image_corrected_unfiltered, squeeze(sum(mask(:,:,1,:),4)));
+        image_corrected = filt_perifiral_kspa(image_corrected_unfiltered, squeeze(sum(mask(:,:,1,:),4)), pars.trim_kspa_filter_mask_size);
     else
         image_corrected = zeros(ky_dim, kz_dim);
     end
