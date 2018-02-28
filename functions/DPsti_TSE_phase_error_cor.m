@@ -185,7 +185,44 @@ assert(sum(size(sense_map_3D)==[TSE.Ix_dim TSE.Iy_dim TSE.Iz_dim length(pars.ena
 
 toc
 
+%% ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+disp('Orthogonal SENSE maps and kspace data...');
+tic
+if(exist('sense_Psi', 'var'))
+    for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
+        sense_Psi(t,t) = real(sense_Psi(t,t));
+    end
+    L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+    L_inv = inv(L);
+    
+    %old way
+    for c = 1:size(sense_Psi,1)
+        %recombine sense map
+        sense_map_3D_orthocoil(:,:,:,c) = sum(bsxfun(@times, sense_map_3D, permute(conj(L_inv(c,:)),[1 3 4 2])), 4);
+        %recombine kspa map
+        kspa_x_yz_orthocoil(:,:,:,c,:) = sum(bsxfun(@times, kspa_x_yz, permute(L_inv(c,:),[1 3 4 2])), 4);
+    end
+    
+    %jasper code; seems to be identical
+%     sizeSENSE = size(sense_map_3D);
+%     sense_map_3D_orthocoil = reshape(transpose(conj(L_inv) * transpose(reshape(sense_map_3D, prod(sizeSENSE(1:3)), sizeSENSE(4)))), sizeSENSE);
+    
+    figure(411);
+    subplot(121); montage(abs(sense_map_3D(:,:,round(size(sense_map_3D,3)/2),:)),'displayrange',[]); title('originial SENSE map')
+    subplot(122); montage(abs(sense_map_3D_orthocoil(:,:,round(size(sense_map_3D,3)/2),:)),'displayrange',[]); title('Orthogonal SENSE map')
+    figure(412);
+    subplot(121); montage(angle(sense_map_3D(:,:,round(size(sense_map_3D,3)/2),:)),'displayrange',[-pi pi]); title('originial SENSE map')
+    subplot(122); montage(angle(sense_map_3D_orthocoil(:,:,round(size(sense_map_3D,3)/2),:)),'displayrange',[-pi pi]); title('Orthogonal SENSE map')
+    colormap jet;
+    
+    sense_map_3D =  sense_map_3D_orthocoil;
+    kspa_x_yz = kspa_x_yz_orthocoil;
+    clear sense_map_orthocoil kspa_x_yz_orthocoil
+    %renormalize sense
+    sense_map_3D = normalize_sense_map(sense_map_3D)+eps;
+end
 
+toc
 
 
 %% preprocssing on phase error data
@@ -329,30 +366,7 @@ if (TSE.Iz_dim>1)
             phase_error = permute(permute(phase_error_3D(recon_x_loc,:,:,:,:),[2 3 4 1]),[1 2 4 3]);
             %========================================================================
             
-            % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
-            if(exist('sense_Psi', 'var'))
-                for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
-                    sense_Psi(t,t) = real(sense_Psi(t,t));
-                end
-                L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-                L_inv = inv(L);
-                for c = 1:size(sense_Psi,1)
-                    %recombine sense map
-                    sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
-                    %recombine kspa map
-                    kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
-                end
-                figure(401);
-                subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
-                subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
-                
-                sense_map =  sense_map_orthocoil;
-                kspa = kspa_orthocoil;
-                clear sense_map_orthocoil kspa_orthocoil
-                %renormalize sense
-                sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
-            end
-            % ========================================================================================
+            
             
             % display phase error------------------
             figure(411);
@@ -409,32 +423,6 @@ else
     
     ksap = permute(kspa_xyz,[1 2 4 5 3]);
     sense_map = squeeze(sense_map_3D);
-    
-    % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
-    if(exist('sense_Psi', 'var'))
-        for t=1:length(sense_Psi)  %make sure diag(sense_Psi) are all real; they should be!
-            sense_Psi(t,t) = real(sense_Psi(t,t));
-        end
-        L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-        L_inv = inv(L);
-        for c = 1:size(sense_Psi,1)
-            %recombine sense map
-            sense_map_orthocoil(:,:,c) = sum(bsxfun(@times, sense_map, permute(L_inv(c,:),[1 3 2])), 3);
-            %recombine kspa map
-            kspa_orthocoil(:,:,c,:) = sum(bsxfun(@times, kspa, permute(L_inv(c,:),[1 3 2])), 3);
-        end
-        figure(401);
-        subplot(121); montage(permute(abs(sense_map),[1 2 4 3]),'displayrange',[]); title('originial SENSE map')
-        subplot(122); montage(permute(abs(sense_map_orthocoil),[1 2 4 3]),'displayrange',[]); title('Orthogonal SENSE map')
-        
-        sense_map =  sense_map_orthocoil;
-        kspa = kspa_orthocoil;
-        clear sense_map_orthocoil kspa_orthocoil
-        %renormalize sense
-        sense_map = squeeze(normalize_sense_map(permute(sense_map,[1 2 4 3])));
-    end
-    % ========================================================================================
-    
     
     image_corrected = msDWIrecon(ksap, sense_map, phase_error_3D, pars.msDWIrecon);
     %     image_corrected = msDWIrecon(permute(kspa_all(:,:,:,:,[1:length(b0_shots_range)]),[1 2 4 5 3]), squeeze(sense_map_3D), phase_error_3D, pars.msDWIrecon);

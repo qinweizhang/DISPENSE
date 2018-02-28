@@ -166,15 +166,15 @@ pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
 pars.recon_dyn = 9:-1:1;
 pars.large_scale_recon = 0; %true; % Choose to use DPsti_TSE_phase_error_cor_large_scale.m or DPsti_TSE_phase_error_cor.m
-pars.nocorrection = 0;
+pars.nocorrection = 1;
 
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
 pars.msDWIrecon.trim_kspa_filter_mask_size = 7;
 pars.msDWIrecon.CG_SENSE_I.lamda=1e-2;
-pars.msDWIrecon.CG_SENSE_I.nit=50; %15;
-pars.msDWIrecon.CG_SENSE_I.tol = 1e-20; %1e-10;
+pars.msDWIrecon.CG_SENSE_I.nit=80; %15;
+pars.msDWIrecon.CG_SENSE_I.tol = 1e-30; %1e-10;
 pars.msDWIrecon.POCS.Wsize = [15 15];  %no point to be bigger than navigator area
 pars.msDWIrecon.POCS.nit = 50;
 pars.msDWIrecon.POCS.tol = 1e-10;

@@ -93,6 +93,8 @@ clear im_recon_nufft nav_im_recon_nufft
 %% recon
 
 % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
+disp('Orthogonal SENSE maps and nav kspace data...');
+tic
 if(exist('nav_sense_Psi','var'))
     if(~isempty(nav_sense_Psi))
         for t=1:length(nav_sense_Psi)  %make sure diag(nav_sense_Psi) are all real; they should be!
@@ -103,6 +105,9 @@ if(exist('nav_sense_Psi','var'))
         for c = 1:size(nav_sense_Psi,1)
             %recombine sense map
             sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute(L_inv(c,:),[1 3 4 2])), 4);
+            
+            %recombine kspa
+            nav_k_spa_data_orthocoil(:,c,:,:) = sum(bsxfun(@times, nav_k_spa_data(:,:,:,:), L_inv(c,:)), 2);
         end
         figure(401);
         s = round(size(nav_sense_map,3)/2);
@@ -110,14 +115,15 @@ if(exist('nav_sense_Psi','var'))
         subplot(122); montage(abs(sense_map_orthocoil(:,:,s,:)),'displayrange',[]); title('Orthogonal SENSE map')
         
         nav_sense_map =  sense_map_orthocoil;
-        clear kspa_orthocoil
+        clear kspa_orthocoil nav_k_spa_data_orthocoil
         %renormalize sense
         nav_sense_map = normalize_sense_map(nav_sense_map);
     end
 end
+toc
 % =================================================================================================
 
-        
+
 
 if(recon_par.recon_all_shot)
     end_shot_idx = size(nav_k_spa_data,3);
@@ -155,22 +161,7 @@ if(recon_par.parfor)  %parfor recon
         
         
         if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
-            
-%             % ========Orthogonal data after SENSE maps orthogonal: disabled for parfor ============================================
-%             if(exist('nav_sense_Psi','var'))
-%                 if(~isempty(nav_sense_Psi))
-%                     
-%                     for c = 1:size(nav_sense_Psi,1)
-%                         %recombine kspa
-%                         kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
-%                     end
-%                     
-%                     sig_kspa = kspa_orthocoil;
-%                     clear  kspa_orthocoil
-%                 end
-%             end
-%             % =================================================================================================
-            
+                        
             sig_nufft = col(double(sig_kspa));
             
             A=nuFTOperator(trj_nufft,recon_par.recon_dim,double(nav_sense_map),6);
@@ -217,20 +208,6 @@ else %no parfor recon
         
         if(~recon_par.channel_by_channel) %(recon_par.sense_map_recon) %all in one recon
             
-            % ========Orthogonal data after SENSE maps orthogonal ============================================
-            if(exist('nav_sense_Psi','var'))
-                if(~isempty(nav_sense_Psi))
-                    
-                    for c = 1:size(nav_sense_Psi,1)
-                        %recombine kspa
-                        kspa_orthocoil(:,c) = sum(bsxfun(@times, sig_kspa, L_inv(c,:)), 2);
-                    end
-                    
-                    sig_kspa = kspa_orthocoil;
-                    clear  kspa_orthocoil
-                end
-            end
-            % =================================================================================================
             
             sig_nufft = col(double(sig_kspa));
             

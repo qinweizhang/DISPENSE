@@ -292,10 +292,10 @@ if(pars.parfor)
             
             % [2]
             % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
-            %         if(exist('sense_Psi', 'var'))
-            %             [kspa, sense_map] = Ortho_data_sense(sense_Psi, kspa, sense_map);
-            %
-            %         end
+            if(exist('sense_Psi', 'var'))
+                [kspa, sense_map] = Ortho_data_sense(sense_Psi, kspa, sense_map);
+                
+            end
             % ========================================================================================
             
             
