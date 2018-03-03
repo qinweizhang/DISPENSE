@@ -193,14 +193,14 @@ if(exist('sense_Psi', 'var'))
         sense_Psi(t,t) = real(sense_Psi(t,t));
     end
     L = chol(sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-    L_inv = inv(L);
+    L_inv = inv(L); %conj or not
     
     %old way
     for c = 1:size(sense_Psi,1)
         %recombine sense map
-        sense_map_3D_orthocoil(:,:,:,c) = sum(bsxfun(@times, sense_map_3D, permute(conj(L_inv(c,:)),[1 3 4 2])), 4);
+        sense_map_3D_orthocoil(:,:,:,c) = sum(bsxfun(@times, sense_map_3D, permute((L_inv(c,:)),[1 3 4 2])), 4);  %conj or not?
         %recombine kspa map
-        kspa_x_yz_orthocoil(:,:,:,c,:) = sum(bsxfun(@times, kspa_x_yz, permute(L_inv(c,:),[1 3 4 2])), 4);
+        kspa_x_yz_orthocoil(:,:,:,c,:) = sum(bsxfun(@times, kspa_x_yz, permute((L_inv(c,:)),[1 3 4 2])), 4); %conj or not?
     end
     
     %jasper code; seems to be identical
@@ -305,7 +305,8 @@ end
 
 resize_command_2 = sprintf('resize -c 0 %d 1 %d 2 %d 3 %d', TSE.Ix_dim, TSE.Iy_dim, TSE.Iz_dim, length(nonb0_shots_range));
 nav_im_2 = bart(resize_command_2, nav_im_2);
-nav_im_2_masked = (bsxfun(@times, nav_im_2, TSE.sense_mask));  %mask
+nav_im_2_masked = (bsxfun(@times, nav_im_2, TSE.sense_mask));  %mask; 
+%>>>>>>>> export nav_im_2_masked for navigator presentation if wanted
 
 
 nav_im_3 = nav_im_2./abs(nav_im_2); %magnitude to 1;

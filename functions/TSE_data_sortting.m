@@ -127,7 +127,7 @@ end
 MR_DPsti_shotLabel = MR_DPstiTSE.Copy;
 Data_temp = MR_DPsti_shotLabel.Data;
 [kx_dim, kx_lines] = size(Data_temp);
-shot_label = shot(readdata_ix);
+shot_label = shot_matched;
 shot_label_data = repmat(shot_label', [kx_dim, 1]);
 % size(shot_label_data) should have the same size as MR_DPstiTSE.Data
 MR_DPsti_shotLabel.Data = single(shot_label_data);

@@ -104,11 +104,13 @@ if(exist('nav_sense_Psi','var'))
         L_inv = inv(L);
         for c = 1:size(nav_sense_Psi,1)
             %recombine sense map
-            sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute(L_inv(c,:),[1 3 4 2])), 4);
+            sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute((L_inv(c,:)),[1 3 4 2])), 4);
             
             %recombine kspa
-            nav_k_spa_data_orthocoil(:,c,:,:) = sum(bsxfun(@times, nav_k_spa_data(:,:,:,:), L_inv(c,:)), 2);
+            nav_k_spa_data_orthocoil(:,c,:,:) = sum(bsxfun(@times, nav_k_spa_data(:,:,:,:), (L_inv(c,:))), 2);
         end
+%         sense_map_orthocoil = nav_sense_map;  %rewrite 
+        
         figure(401);
         s = round(size(nav_sense_map,3)/2);
         subplot(121); montage(abs(nav_sense_map(:,:,s,:)),'displayrange',[]); title('originial SENSE map')

@@ -130,7 +130,7 @@ end
 
 
 %display_bool = input('display sense map? (true/false): ');
-display_bool = 0;
+display_bool = 1;
 if(display_bool)
     figure(711);
     subplot(211);
@@ -141,8 +141,10 @@ if(display_bool)
     figure(712);
     subplot(121);
     imagesc(abs(sens_Psi_default_sorting)); title('sens Psi (defualt)');
-    subplot(122);
-    imagesc(abs(sens_Psi_no_sorting)); title('sens Psi (modifiled order)');
+    if(exist('sens_Psi_no_sorting','var')) %only for on no cc
+        subplot(122);
+        imagesc(abs(sens_Psi_no_sorting)); title('sens Psi (modifiled order)');
+    end
 end
 
 end

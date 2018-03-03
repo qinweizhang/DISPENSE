@@ -15,7 +15,7 @@ function [compressed_sense_map, compressed_sense_Psi] = compress_sense_map_Psi(V
 
 assert(size(full_sense_map, 4) == size(full_sense_Psi, 1),'sense map does not match Psi');
 
-
+full_sense_map_copy = full_sense_map;
 cur_nr_chans = size(full_sense_map, 4);
 for ac_in = 1:size( VirtualCoilMartix, 3 )
     row_ind = min( [size(VirtualCoilMartix, 1), find( isnan( VirtualCoilMartix(:,1,ac_in ) ),1 )-1]);
@@ -38,4 +38,8 @@ end
 
 
 disp(['SENSE maps and Psi are compressed to ', num2str(size(A,1)) ,' virtual channels!']);
+figure(102);
+slice_id = max(1, floor(size(full_sense_map,3)/2));
+subplot(121); montage(permute(squeeze(abs((full_sense_map_copy(:,:,slice_id,:)))),[1 2 4 3]),'displayrange',[]); title('SENSE before cc')
+subplot(122); montage(permute(squeeze(abs((compressed_sense_map(:,:,slice_id,:)))),[1 2 4 3]),'displayrange',[]); title('SENSE after cc')
 end
