@@ -11,7 +11,7 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn         = 'br_28022018_1634494_2_2_wip_sc2_3d_snd_brain_4bV4.raw';
+data_fn         = 'br_28022018_1701015_5_2_wip_sc2_3d_snd_brain_4bV4.raw';
 sense_ref_fn    = 'br_28022018_1634181_1000_5_wip_senserefscanV4.raw';
 coil_survey_fn  = 'br_28022018_1632271_1000_2_wip_coilsurveyscanV4.raw';
 
@@ -29,7 +29,7 @@ coil_cmp_nr = 6;
 disp('-finished- ');
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
-save_mat_fn = 'Sc02.mat';
+save_mat_fn = 'Sc05.mat';
 close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
@@ -138,7 +138,7 @@ assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not m
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
-save_mat_fn = 'Sc02.mat';
+save_mat_fn = 'Sc05.mat';
 
 nav_data = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
 

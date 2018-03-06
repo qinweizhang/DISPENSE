@@ -1,6 +1,6 @@
 
 clear; clc; close all
-cd('/home/qzhang/lood_storage/divi/Users/qzhang/Data/2018_02_28_SND_brain_jasper')
+cd('/home/qzhang/lood_storage/divi/Users/qzhang/Data/2018_01_28_SND_brain')
 %% trajectory calculation
 close all; clear; clc;
 trj_save_fn = 'traj_for_Sc2.mat';
@@ -11,30 +11,30 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn         = 'br_28022018_1634494_2_2_wip_sc2_3d_snd_brain_4bV4.raw';
-sense_ref_fn    = 'br_28022018_1634181_1000_5_wip_senserefscanV4.raw';
-coil_survey_fn  = 'br_28022018_1632271_1000_2_wip_coilsurveyscanV4.raw';
+data_fn         = 'sn_28012018_1332372_6_2_wip_sc2_3d_snd_brain_noppuV4.raw';
+sense_ref_fn    = 'sn_28012018_1246096_1000_5_wip_senserefscanV4.raw';
+coil_survey_fn  = 'sn_28012018_1243593_1000_2_wip_coilsurveyscanV4.raw';
 
-trj_mat_fn = 'traj_for_Sc2.mat';
+trj_mat_fn = 'traj_for_Sc6.mat';
 
 %% Check if sense map channel order matched with data channel order
 edit check_channel_order.m
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
-coil_cmp_nr = 6;
+coil_cmp_nr = 8;
 [nav_k_spa_data, Nav_VirtualCoilMartix] = nav_kspa_data_read(data_fn, coil_cmp_nr);
 % nav_k_spa_data = nav_kspa_data_read(data_fn);
 
 disp('-finished- ');
 %% Spiral NUFFT recon.
 disp(' Spiral NUFFT recon...');
-save_mat_fn = 'Sc02.mat';
+save_mat_fn = 'Sc06.mat';
 close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 offcenter_xy = [0 0]; 
-FOV_xy = [250 159.0909];  %<<<<<<<<<<<<<<<  Check FOV
+FOV_xy = [250 159.0909 ];  %<<<<<<<<<<<<<<<  Check FOV
 % nav_im_recon_nufft = [];
 dyn_recon = 9:-1:1;
 for d = 1:length(dyn_recon)
@@ -43,13 +43,13 @@ for d = 1:length(dyn_recon)
     disp(['dynamic: ',num2str(dyn)]);
     %=============== recon parameters =========================
     recon_par.ignore_kz = 0;
-    recon_par.acq_dim = [32 32 18];  
-    recon_par.recon_dim  = [32 32 18];
+    recon_par.acq_dim = [42 42 26];  
+    recon_par.recon_dim  = [42 42 26];
     recon_par.dyn_nr = dyn;
     recon_par.skip_point = 0 ;
     recon_par.end_point = []; %or []: till the end;
-    recon_par.interations = 5;
-    recon_par.lamda = 0;
+    recon_par.interations = 8;
+    recon_par.lamda = 0.1;
     recon_par.recon_all_shot = 1;
     recon_par.sense_map_recon =1; 
     recon_par.update_SENSE_map = 0;
@@ -71,8 +71,8 @@ for d = 1:length(dyn_recon)
         clc_sens_par.cc = 1;
         clc_sens_par.disp = 0;
         [nav_sense_map_raw, nav_sense_Psi_raw] = calc_sense_map(recon_par.data_fn, recon_par.sense_ref,  recon_par.coil_survey, recon_par.recon_dim,recon_par.sense_calc_method, recon_par.sense_os, clc_sens_par);
-        nav_sense_map_perm = nav_sense_map_raw(:,:,:,[1:10 12:26 11 27:end]); % manually detected in this case the sense channel order is not matched with image
-        nav_sense_Psi_perm = nav_sense_Psi_raw([1:10 12:26 11 27:end], [1:10 12:26 11 27:end]);
+        nav_sense_map_perm = nav_sense_map_raw(:,:,:,[1:10 12:25 11 26:31]); % manually detected in this case the sense channel order is not matched with image
+        nav_sense_Psi_perm = nav_sense_Psi_raw([1:10 12:25 11 26:31], [1:10 12:25 11 26:31]);
         
         %compress sense map and sense_Psi
         if(exist('Nav_VirtualCoilMartix','var'))
@@ -125,7 +125,7 @@ close all; clc; clear TSE
 disp(' TSE data sorting and default recon...')
 
 parameter2read.dyn = [];
-parameter2read.cc_nr = 4; %0 for no cc
+parameter2read.cc_nr = 5; %0 for no cc
 parameter2read.sense_recon = 0;
 
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange, TSE.VirtualCoilMartix] = ...
@@ -138,16 +138,16 @@ assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not m
 disp('-finished- ');
 
 %% TSE data non-rigid phase error correction (iterative) CG_SENSE
-save_mat_fn = 'Sc02.mat';
+save_mat_fn = 'Sc06.mat';
 
 nav_data = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
 
 TSE.dyn_dim = dyn_nr;
 TSE.SENSE_kx =1;
-TSE.SENSE_ky =2;
+TSE.SENSE_ky =3;
 TSE.SENSE_kz =1;
 
-TSE.kyrange = [-62 -1]; 
+TSE.kyrange = [-38 -1]; 
 TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 TSE.kzrange = [-68, -1];
 
@@ -196,8 +196,8 @@ dim = [range(TSE.Ixrange), range(TSE.Iyrange), range(TSE.Izrange) ]+1;
 clc_sens_par.cc = (parameter2read.cc_nr>0);
 clc_sens_par.disp = 0;
 [sense_map_temp, TSE.sense_Psi] = get_sense_map_external(pars.sense_ref, pars.data_fn, pars.coil_survey, [dim(1)/2 dim(2) dim(3)], os, clc_sens_par);
-sense_map_temp_reorder = sense_map_temp(:,:,:,[1:10 12:26 11 27:end]); % manually detected in this case the sense channel order is not matched with image
-sense_Psi_reorder = TSE.sense_Psi([1:10 12:26 11 27:end], [1:10 12:26 11 27:end]);
+sense_map_temp_reorder = sense_map_temp(:,:,:,[1:10 12:25 11 26:31]); % manually detected in this case the sense channel order is not matched with image
+sense_Psi_reorder = TSE.sense_Psi([1:10 12:25 11 26:31], [1:10 12:25 11 26:31]);
 
 %----compress sense map and sense_Psi
 if(isfield(TSE, 'VirtualCoilMartix'))

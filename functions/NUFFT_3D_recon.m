@@ -93,36 +93,38 @@ clear im_recon_nufft nav_im_recon_nufft
 %% recon
 
 % ========Orthogonal SENSE maps: recombine coils to make the Psi map indentity mtx (SNR optimized)
-disp('Orthogonal SENSE maps and nav kspace data...');
-tic
-if(exist('nav_sense_Psi','var'))
-    if(~isempty(nav_sense_Psi))
-        for t=1:length(nav_sense_Psi)  %make sure diag(nav_sense_Psi) are all real; they should be!
-            nav_sense_Psi(t,t) = real(nav_sense_Psi(t,t));
-        end
-        L = chol(nav_sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
-        L_inv = inv(L);
-        for c = 1:size(nav_sense_Psi,1)
-            %recombine sense map
-            sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute((L_inv(c,:)),[1 3 4 2])), 4);
+if(1)
+    disp('Orthogonal SENSE maps and nav kspace data...');
+    tic
+    if(exist('nav_sense_Psi','var'))
+        if(~isempty(nav_sense_Psi))
+            for t=1:length(nav_sense_Psi)  %make sure diag(nav_sense_Psi) are all real; they should be!
+                nav_sense_Psi(t,t) = real(nav_sense_Psi(t,t));
+            end
+            L = chol(nav_sense_Psi,'lower'); %Cholesky decomposition; L: lower triangle
+            L_inv = inv(L);
+            for c = 1:size(nav_sense_Psi,1)
+                %recombine sense map
+                sense_map_orthocoil(:,:,:,c) = sum(bsxfun(@times, nav_sense_map, permute((L_inv(c,:)),[1 3 4 2])), 4);
+                
+                %recombine kspa
+                nav_k_spa_data_orthocoil(:,c,:,:) = sum(bsxfun(@times, nav_k_spa_data(:,:,:,:), (L_inv(c,:))), 2);
+            end
+            %         sense_map_orthocoil = nav_sense_map;  %rewrite
             
-            %recombine kspa
-            nav_k_spa_data_orthocoil(:,c,:,:) = sum(bsxfun(@times, nav_k_spa_data(:,:,:,:), (L_inv(c,:))), 2);
+            figure(401);
+            s = round(size(nav_sense_map,3)/2);
+            subplot(121); montage(abs(nav_sense_map(:,:,s,:)),'displayrange',[]); title('originial SENSE map')
+            subplot(122); montage(abs(sense_map_orthocoil(:,:,s,:)),'displayrange',[]); title('Orthogonal SENSE map')
+            
+            nav_sense_map =  sense_map_orthocoil;
+            clear kspa_orthocoil nav_k_spa_data_orthocoil
+            %renormalize sense
+            nav_sense_map = normalize_sense_map(nav_sense_map);
         end
-%         sense_map_orthocoil = nav_sense_map;  %rewrite 
-        
-        figure(401);
-        s = round(size(nav_sense_map,3)/2);
-        subplot(121); montage(abs(nav_sense_map(:,:,s,:)),'displayrange',[]); title('originial SENSE map')
-        subplot(122); montage(abs(sense_map_orthocoil(:,:,s,:)),'displayrange',[]); title('Orthogonal SENSE map')
-        
-        nav_sense_map =  sense_map_orthocoil;
-        clear kspa_orthocoil nav_k_spa_data_orthocoil
-        %renormalize sense
-        nav_sense_map = normalize_sense_map(nav_sense_map);
     end
+    toc
 end
-toc
 % =================================================================================================
 
 
