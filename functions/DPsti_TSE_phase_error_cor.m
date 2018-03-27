@@ -18,15 +18,15 @@ function image_corrected = DPsti_TSE_phase_error_cor(ima_k_spa_data, TSE, TSE_se
 
 %% Data check
 
-max_shot = max(TSE.shot_matched);
-assert(max_shot == size(nav_data, 4));
-assert(TSE.ch_dim == size(TSE_sense_map, 4)||isempty(TSE_sense_map));
+% max_shot = max(TSE.shot_matched);
+% assert(max_shot == size(nav_data, 4));
+% assert(TSE.ch_dim == size(TSE_sense_map, 4)||isempty(TSE_sense_map));
 
-profiles_per_dyn = size(ima_k_spa_data,2)/TSE.dyn_dim;
-assert(round(profiles_per_dyn) == profiles_per_dyn);
-shots_per_dyn = max_shot/TSE.dyn_dim;
-assert(round(shots_per_dyn) == shots_per_dyn);
-assert(max(pars.enabled_ch)<=TSE.ch_dim&&min(pars.enabled_ch)>0);
+% profiles_per_dyn = size(ima_k_spa_data,2)/TSE.dyn_dim;
+% assert(round(profiles_per_dyn) == profiles_per_dyn);
+% shots_per_dyn = max_shot/TSE.dyn_dim;
+% assert(round(shots_per_dyn) == shots_per_dyn);
+% assert(max(pars.enabled_ch)<=TSE.ch_dim&&min(pars.enabled_ch)>0);
 
 TSE.kx_dim = TSE.kxrange(2) - TSE.kxrange(1) + 1;
 assert(TSE.kx_dim >=  size(ima_k_spa_data,1));

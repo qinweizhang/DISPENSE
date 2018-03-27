@@ -22,7 +22,7 @@ edit check_channel_order.m
 
 %% Spiral Nav. data loading
 disp('spiral Nav. data loading...')
-coil_cmp_nr = 6;
+coil_cmp_nr = 8;
 [nav_k_spa_data, Nav_VirtualCoilMartix] = nav_kspa_data_read(data_fn, coil_cmp_nr);
 % nav_k_spa_data = nav_kspa_data_read(data_fn);
 
@@ -34,10 +34,10 @@ close all;
 [kx_length ch_nr shot_nr, dyn_nr] = size(nav_k_spa_data);
 
 offcenter_xy = [0 0]; 
-FOV_xy = [250 170.4545];  %<<<<<<<<<<<<<<<  Check FOV
+FOV_xy = [250 181.8182];  %<<<<<<<<<<<<<<<  Check FOV
 % nav_im_recon_nufft = [];
 dyn_recon = 9:-1:1;
-for d = 1:length(dyn_recon)
+for d = 2:length(dyn_recon)
     tic
     dyn  = dyn_recon(d);
     disp(['dynamic: ',num2str(dyn)]);
@@ -125,19 +125,23 @@ close all; clc; clear TSE
 disp(' TSE data sorting and default recon...')
 
 parameter2read.dyn = [];
-parameter2read.cc_nr = 4; %0 for no cc
+parameter2read.cc_nr = 8; %0 for no cc
 parameter2read.sense_recon = 0;
 
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange, TSE.VirtualCoilMartix] = ...
     TSE_data_sortting(data_fn, sense_ref_fn, coil_survey_fn,parameter2read);
 
+TSE
+
 figure(610); immontage4D(permute(abs(ima_default_recon(:,:,:,:)),[1 2 4 3]), []);
 
-TSE
-assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not match with data size!')
 disp('-finished- ');
 
-%% TSE data non-rigid phase error correction (iterative) CG_SENSE
+%% %% TSE data non-rigid phase error correction (iterative) CG_SENSE
+
+
+assert(length(TSE.ky_matched)==size(ima_k_spa_data,2),'Profile number does not match with data size!')
+
 save_mat_fn = 'Sc02.mat';
 
 nav_data = reshape(nav_im_recon_nufft, size(nav_im_recon_nufft,1), size(nav_im_recon_nufft, 2), size(nav_im_recon_nufft, 3), max(TSE.shot_matched));
@@ -147,7 +151,7 @@ TSE.SENSE_kx =1;
 TSE.SENSE_ky =2;
 TSE.SENSE_kz =1;
 
-TSE.kyrange = [-56 -1]; 
+TSE.kyrange = [-64 -1]; 
 TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 TSE.kzrange = [-68, -1];
 
@@ -170,14 +174,14 @@ pars.nav_phase_sm_kernel = 3;  %3 or 5, 1:no soomthing
 pars.recon_x_locs = 88:(88+176);
 pars.enabled_ch = 1:TSE.ch_dim;
 pars.b0_shots = []; %[] means first dynamic
-pars.recon_dyn = 9:-1:1;
+pars.recon_dyn = 8:-1:1;
 pars.large_scale_recon = 0; %true; % Choose to use DPsti_TSE_phase_error_cor_large_scale.m or DPsti_TSE_phase_error_cor.m
 pars.nocorrection = 0;
 
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
-pars.msDWIrecon.trim_kspa_filter_mask_size = 7;
+pars.msDWIrecon.trim_kspa_filter_mask_size = 1;
 pars.msDWIrecon.CG_SENSE_I.lamda=1e-2;
 pars.msDWIrecon.CG_SENSE_I.nit=15; %15;
 pars.msDWIrecon.CG_SENSE_I.tol = 1e-10; %1e-10;

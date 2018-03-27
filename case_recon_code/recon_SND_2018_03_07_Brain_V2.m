@@ -58,7 +58,7 @@ for d = 1:length(dyn_recon)
     recon_par.data_fn = data_fn;
     recon_par.sense_ref = sense_ref_fn;
     recon_par.coil_survey = coil_survey_fn;
-    recon_par.parfor = 0; %parfor recon for different shots
+    recon_par.parfor = 1; %parfor recon for different shots
     
     recon_par.channel_by_channel = 1;
     recon_par.channel_by_channel = recon_par.channel_by_channel .* (1-recon_par.sense_map_recon );
@@ -125,7 +125,7 @@ close all; clc; clear TSE
 disp(' TSE data sorting and default recon...')
 
 parameter2read.dyn = [];
-parameter2read.cc_nr = 4; %0 for no cc
+parameter2read.cc_nr = 8; %0 for no cc
 parameter2read.sense_recon = 0;
 
 [ima_k_spa_data,TSE.ky_matched,TSE.kz_matched,TSE.shot_matched, TSE.ch_dim,ima_kspa_sorted, ima_default_recon, TSE_sense_map, TSE.kxrange, TSE.kyrange, TSE.kzrange, TSE.VirtualCoilMartix] = ...
@@ -147,7 +147,7 @@ TSE.SENSE_kx =1;
 TSE.SENSE_ky =2;
 TSE.SENSE_kz =1;
 
-TSE.kyrange = [-56 -1]; 
+TSE.kyrange = [-60 -1]; 
 TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 TSE.kzrange = [-68, -1];
 

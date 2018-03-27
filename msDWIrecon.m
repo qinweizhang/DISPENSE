@@ -108,6 +108,20 @@ elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
     warning('!!! LRT reconed non-b0 images are averaged to obtain final results !!!');
     image_corrected = image_corrected_LRT;
 %     image_corrected = mean(squeeze(image_corrected_LRT(:,:,1,2:end,2)),3);
+elseif strcmp(pars.method, 'LRT_implicit') %recon in the LRT_implicit frame
+     %% LRT_implicit 
+    warning('Perform LRT implicit reconstruction...');
+
+    image_corrected_LRT=LRT_implicit_recon_msDWI(kspa,squeeze(sense_map),pars.LRT_implicit);
+    
+    figure(1000);
+    subplot(221); montage(permute(squeeze(abs(image_corrected_LRT(:,:,1,:,1))),[1 2 4 3]),'displayrange',[]); title('LRT recon of nav. column (mag.)')
+    subplot(222); montage(permute(squeeze(angle(image_corrected_LRT(:,:,1,:,1))),[1 2 4 3]),'displayrange',[-pi pi]);title('LRT recon of nav. column (phase.)')
+    subplot(223); montage(permute(squeeze(abs(image_corrected_LRT(:,:,1,:,2))),[1 2 4 3]),'displayrange',[]); title('LRT recon of image column (mag.)')
+    subplot(224); montage(permute(squeeze(angle(image_corrected_LRT(:,:,1,:,2))),[1 2 4 3]),'displayrange',[-pi pi]); title('LRT recon of image column (phase.)')
+    
+    warning('!!! LRT reconed non-b0 images are averaged to obtain final results !!!');
+    image_corrected = image_corrected_LRT;
 else
     error('recon method not recognized...')
 end

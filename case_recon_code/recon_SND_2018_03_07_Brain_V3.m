@@ -11,7 +11,7 @@ disp('-finished- ');
 %% SET path for all the following steps
 clear; close all; clc
 
-data_fn         = 'sn_07032018_1543510_4_2_wip_sc2_3d_snd_brain_4bV4.raw';
+data_fn         = 'sn_07032018_1513481_2_2_wip_sc2_3d_snd_brain_4bV4.raw';
 sense_ref_fn    = 'sn_07032018_1513131_1000_5_wip_senserefscanV4.raw';
 coil_survey_fn  = 'sn_07032018_1511012_1000_2_wip_coilsurveyscanV4.raw';
 
@@ -147,7 +147,7 @@ TSE.SENSE_kx =1;
 TSE.SENSE_ky =2;
 TSE.SENSE_kz =1;
 
-TSE.kyrange = [-56 -1]; 
+TSE.kyrange = [-60 -1]; 
 TSE.kxrange = [-352 -1]; %consider now the ima_k_spa_data is oversampled in kx; kx oversmapled by 2 + 
 TSE.kzrange = [-68, -1];
 
@@ -177,7 +177,7 @@ pars.nocorrection = 0;
 
 %paraemter for msDWIrecon called by DPsti_TSE_phase_error_cor
 pars.msDWIrecon = initial_msDWIrecon_Pars;
-pars.msDWIrecon.trim_kspa_filter_mask_size = 7;
+pars.msDWIrecon.trim_kspa_filter_mask_size = 1;
 pars.msDWIrecon.CG_SENSE_I.lamda=1e-2;
 pars.msDWIrecon.CG_SENSE_I.nit=15; %15;
 pars.msDWIrecon.CG_SENSE_I.tol = 1e-10; %1e-10;

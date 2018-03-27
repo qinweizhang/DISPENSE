@@ -1,5 +1,5 @@
 %==========DPsti-TSE nonrigid motion correction simulation============
-cd(['/home/',getenv('USER'),'/lood_storage/divi/Ima/parrec/Kerry/Data/LRT_SoSNav_simulation_data'])
+cd(['/home/',getenv('USER'),'/lood_storage/divi/Users/qzhang/Data/LRT_SoSNav_simulation_data'])
 clear; close all; clc
 load('test_data_10_11.mat')  %  test_data_09_24
 
