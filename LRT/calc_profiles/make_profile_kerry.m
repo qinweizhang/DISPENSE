@@ -5,16 +5,16 @@ fprintf('Making LRT profile \n')
 fprintf('--------------------\n \n')
 
 %%%%%%%%%%%% PARAMETERS TO CHANGE%%%%%%%%%%%%%%%%%%%%%%%
-nDim1=50; % TSE dimensions/DTI
-nDim2=4; % T2-prep 
-ky=108; 
+nDim1=500; % TSE dimensions/DTI/shots
+nDim2=2; % T2-prep
+ky=120; 
 kz=66; 
 
 dim1_bigctr=1; % dimension number of fully sampled center (param dimension 1)
 dim2_bigctr=1; % dimension number of fully sampled center (param dimension 1)
 
-bigctrsize=0;
-smallctrsize=5;
+bigctrsize=1;
+smallctrsize=1;
 DTI=1; %1=DTI/T2prep - 0: VFA/T2prep (decides ordering of lines) or VFA/DTI
 if(DTI)
 ETL = 60;
@@ -39,8 +39,8 @@ TR_shot=2000e-3;
 
 MC_maxiter=10000; 
 visualize=1;
-radialflag=1; %radial/linear
-linearflag=0; % 0 vertical ordering/ 1 horizontal ordering;
+radialflag=0; %radial/linear
+linearflag=1; % 0 vertical ordering/ 1 horizontal ordering;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -112,9 +112,9 @@ end
 
  
 if ispc()
-     cd('L:\basic\divi\Ima\parrec\Jasper\profiles_LRT')
+     cd('L:\basic\divi\Ima\parrec\Kerry\LRT_profiles')
 else
-     cd(['/home/',getenv('USER'),'/lood_storage/divi/Ima/parrec/kerry/CSENSE_profiles/profiles_LRT']);
+     cd(['/home/',getenv('USER'),'/lood_storage/divi/Ima/parrec/kerry/LRT_profiles']);
 end
 savemask_LRT(profile_order,filename,visualize)
 

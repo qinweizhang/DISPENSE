@@ -143,6 +143,9 @@ for x = 1:length(recon_x_range)
     pars.LRT.niter = 5;
     
     
+    pars.LRT_implicit = [];
+    
+    
     %--------------------------------------------------------------
     %% UPDATE mask
     

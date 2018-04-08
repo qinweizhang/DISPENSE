@@ -1,4 +1,4 @@
-function I_recon=LRT_implicit_recon_msDWI(kspa,sense_map,params)
+function I_recon=LRT_implicit_recon_msDWI(kspa,sense_map, phase_error, params)
 % Implicit Low-Rank Tensor reconstruction 
 
 % recon is run as: I_recon=LRT_implicit_recon_msDWI(kspace,sens,params)
@@ -42,6 +42,11 @@ A  = A_opt(sense_map_norm, [nx, ny], nc, ns, sampling_mask);
 
 % initialize
 m_0 = A' * kspa(:);
+
+H = Hankel_opt([nx, ny], params.Hankel.kernel_size, params.Hankel.smooth_flag);
+H_m = H * m_0;
+m = H' * H_m;
+
 beta = 0;
 gamma = 0;
 

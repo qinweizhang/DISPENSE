@@ -111,8 +111,11 @@ elseif strcmp(pars.method, 'LRT') %recon in the LRT frame
 elseif strcmp(pars.method, 'LRT_implicit') %recon in the LRT_implicit frame
      %% LRT_implicit 
     warning('Perform LRT implicit reconstruction...');
-
-    image_corrected_LRT=LRT_implicit_recon_msDWI(kspa,squeeze(sense_map),pars.LRT_implicit);
+    
+    pars.LRT_implicit.Hankel.smooth_flag = 0;
+    pars.LRT_implicit.Hankel.kernel_size = [8 8];
+   
+    image_corrected_LRT=LRT_implicit_recon_msDWI(kspa,squeeze(sense_map), phase_error, pars.LRT_implicit);
     
     figure(1000);
     subplot(221); montage(permute(squeeze(abs(image_corrected_LRT(:,:,1,:,1))),[1 2 4 3]),'displayrange',[]); title('LRT recon of nav. column (mag.)')
